@@ -1,0 +1,19 @@
+PRD.md
+  s_72d71b2abc110f::t_d46ae8eec117a0 475,477,479,481-482,484-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "fe1953b285d9fd92493809ad2ce5f9805bd95d3a",
+  "prompts": {},
+  "sessions": {
+    "s_72d71b2abc110f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63b2966-58ae-41cf-887a-f5de526868d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    }
+  }
+}
