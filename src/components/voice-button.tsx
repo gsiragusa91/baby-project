@@ -144,7 +144,16 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
       {state !== "idle" && (
         <div className="absolute bottom-full right-0 mb-2 w-max max-w-[220px] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1.5 text-right shadow-lg">
           {state === "error" && (
-            <span className="text-xs font-semibold text-[var(--danger)]">{errorMsg}</span>
+            <div className="flex flex-col items-end gap-1.5">
+              <span className="text-xs font-semibold text-[var(--danger)]">{errorMsg}</span>
+              <button
+                type="button"
+                onClick={startRecording}
+                className="rounded-full bg-[var(--primary)] px-3 py-1 text-[11px] font-bold text-[var(--primary-ink)]"
+              >
+                Permitir y reintentar
+              </button>
+            </div>
           )}
           {state === "recording" && <RecordingTimer startedAt={recordingStart} />}
           {state === "processing" && (
