@@ -138,27 +138,26 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-0.5">
-      {state === "error" && (
-        <p className="text-xs font-semibold text-[var(--danger)] px-4 text-center">
-          {errorMsg}
-        </p>
-      )}
-
-      {state === "recording" && (
-        <RecordingTimer startedAt={recordingStart} />
-      )}
-
-      {state === "processing" && (
-        <p className="text-xs font-semibold text-[var(--ink-soft)] animate-pulse">
-          Procesando…
-        </p>
-      )}
-
-      {state === "saving" && (
-        <p className="text-xs font-semibold text-[var(--ink-soft)] animate-pulse">
-          Guardando…
-        </p>
+    <div className="relative flex flex-col items-center justify-center gap-0.5">
+      {/* Status como pop-up flotante (absolute): NO empuja la barra de nav.
+          Aparece arriba del chip, anclado a la derecha para no salirse del borde. */}
+      {state !== "idle" && (
+        <div className="absolute bottom-full right-0 mb-2 w-max max-w-[220px] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1.5 text-right shadow-lg">
+          {state === "error" && (
+            <span className="text-xs font-semibold text-[var(--danger)]">{errorMsg}</span>
+          )}
+          {state === "recording" && <RecordingTimer startedAt={recordingStart} />}
+          {state === "processing" && (
+            <span className="text-xs font-semibold text-[var(--ink-soft)] animate-pulse">
+              Procesando…
+            </span>
+          )}
+          {state === "saving" && (
+            <span className="text-xs font-semibold text-[var(--ink-soft)] animate-pulse">
+              Guardando…
+            </span>
+          )}
+        </div>
       )}
 
       <div className="relative flex items-center justify-center">
