@@ -284,3 +284,19 @@
 * `npm run lint` paso correctamente.
 * `npx tsc --noEmit` paso correctamente.
 * `npm run build` paso correctamente.
+
+## 2026-06-25 — Handoff voz v0
+
+### Avance
+
+* Se confirmo que `OPENAI_API_KEY` esta configurada en `.env.local`.
+* Se confirmo que la API key es aceptada por OpenAI y que hay prerequisitos locales para voz.
+* Se dejo un handoff completo en `VOICE_V0_HANDOFF.md`.
+* El servidor local estaba activo en `http://localhost:3000` al momento del handoff.
+
+### Proxima sesion
+
+* Leer `VOICE_V0_HANDOFF.md`.
+* Probar audios reales desde Hoy.
+* Ajustar prompt/schema segun errores reales.
+* Luego avanzar con edicion antes de confirmar.
