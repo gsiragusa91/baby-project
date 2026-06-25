@@ -1,5 +1,25 @@
 # Bitacora
 
+## 2026-06-25 — PRD actualizado con flujo de acceso
+
+### Avance
+
+* Se valido en Supabase remoto que existen `invited_email`, `create_family_invite(...)`, `get_family_invite_preview(...)` y `join_family_with_invite(...)`.
+* Se ajusto `/invite/[code]` para mostrar error si el usuario logueado no coincide con el email invitado.
+* Se agrego al PRD un diagrama de flujo de login, registro, onboarding e invitacion familiar.
+* Se actualizo el PRD para reemplazar el modelo viejo de seed manual por onboarding + invitacion ligada a email.
+
+### Conceptos trabajados
+
+* Diferencia entre flujo principal y fallback.
+* Por que el link de invitacion no debe ser un codigo generico.
+* Como una ruta dinamica de Next (`/invite/[code]`) permite llevar estado por URL.
+
+### Validacion tecnica
+
+* `npm run lint` paso correctamente.
+* `npm run build` paso correctamente.
+
 ## 2026-06-25 — Design system dark-candy + nav voice-first (UI Hoy)
 
 ### Avance
