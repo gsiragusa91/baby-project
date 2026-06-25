@@ -1,0 +1,115 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap");
+@import "tailwindcss";
+
+/* =========================================================
+   DESIGN SYSTEM — Baby's Project
+   Tema: dark-only. Estética: playful candy.
+   Regla 60-30-10: superficies (60) · texto (30) · color (10).
+   En dark, la elevación se hace con LUZ, no con sombra:
+   cuanto más "cerca" está algo, más claro es.
+   ========================================================= */
+:root {
+  color-scheme: dark; /* hace que los controles nativos (date, select, checkbox) se rendericen en oscuro */
+
+  /* === SUPERFICIES (el 60%) === */
+  --background: #14121c;      /* fondo de la app, lo más "lejos"/oscuro */
+  --surface: #211d2e;         /* cards (un escalón más claro) */
+  --surface-strong: #2b2538;  /* modales / bottom sheets (lo más "cerca") */
+  --line: #332c44;            /* bordes sutiles */
+
+  /* === TEXTO (el 30%) === */
+  --foreground: #f2eef7;      /* texto primario: off-white, NUNCA #fff */
+  --ink-soft: #a89fb5;        /* texto secundario, labels */
+
+  /* === CATEGORÍAS (el 10% que trabaja: color = información) === */
+  --sleep: #a99cff;           /* sueño — lila/índigo (noche) */
+  --feed: #ffc078;            /* lactancia — ámbar/durazno (cálido) */
+  --diaper: #5fe0c0;          /* pañal — menta/teal (fresco) */
+
+  /* tints: el color a baja opacidad, para fondos de card en dark
+     (un fondo de color sólido "brilla" demasiado sobre oscuro) */
+  --sleep-tint: rgba(169, 156, 255, 0.14);
+  --feed-tint: rgba(255, 192, 120, 0.14);
+  --diaper-tint: rgba(95, 224, 192, 0.14);
+
+  /* === ACCIÓN (la "marca") === */
+  --primary: #ff96c2;         /* bubblegum — botones / estado activo */
+  --primary-ink: #2b1622;     /* texto sobre primary (oscuro, para contraste AA) */
+  --primary-tint: rgba(255, 150, 194, 0.16);
+
+  /* === SEMÁNTICOS (estado, no marca: error / aviso / éxito) === */
+  --danger: #ff8a8a;          /* coral suave, legible en dark */
+  --danger-tint: rgba(255, 138, 138, 0.16);
+
+  /* === FORMA === */
+  --radius-sm: 8px;           /* inputs, chips */
+  --radius-md: 16px;          /* cards */
+  --radius-lg: 24px;          /* bottom sheets, modales */
+  --radius-full: 9999px;      /* botones pill, badges */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #0d0b14; /* el "afuera" del teléfono, casi negro */
+}
+
+body {
+  min-height: 100svh;
+  margin: 0;
+  background: #0d0b14;
+  color: var(--foreground);
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  accent-color: var(--primary); /* tiñe checkboxes/radios nativos con la marca */
+}
+
+.mobile-shell {
+  width: min(100vw, 430px);
+  min-height: 100svh;
+  margin: 0 auto;
+  background:
+    radial-gradient(120% 55% at 50% 0%, rgba(255, 150, 194, 0.07), transparent 60%),
+    var(--background);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.tap-target {
+  min-height: 52px;
+  min-width: 52px;
+}
+
+.field {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04); /* fill apenas más claro que la card */
+  padding: 14px 16px;
+  color: var(--foreground);
+  outline: none;
+}
+
+.field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+
+.sheet {
+  border-top: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
