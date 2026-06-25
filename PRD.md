@@ -472,22 +472,39 @@ Si el usuario elige una opción:
 * Se muestra en pantalla principal.
 * Se muestra como próximo recordatorio activo.
 
-### Iteración posterior: notificaciones
+### 6.5.1 Flujo de notificaciones push (permisos + aviso de alarma) — post-MVP
 
-Limitaciones conocidas:
+> Estado: el push real queda para una iteración posterior (ver Iteración 2). En el MVP el recordatorio es solo **visual** (calculado, persistido y mostrado en "Hoy"). Esta sección documenta el flujo objetivo para no improvisarlo después.
 
-* En iPhone, las notificaciones web tienen restricciones.
-* La confiabilidad puede depender de que la web app esté instalada como PWA.
-* No se garantiza el mismo comportamiento que una alarma nativa del Clock de iPhone.
+**Dos permisos distintos — no confundir.** Son APIs y features separadas:
 
-Cuando se avance con push/PWA:
+* **Micrófono** (`getUserMedia`): habilita la **carga por voz**. Se pide al tocar el botón de voz. Si se niega → mensaje claro de cómo re-habilitarlo + se mantiene la **carga manual** como fallback. No tiene relación con las notificaciones.
+* **Notificaciones / push** (`Notification` + Push API): habilita el **aviso de la próxima toma**. Se pide en el contexto del recordatorio, nunca al abrir la app. Un permiso ya `denied` no se puede volver a pedir por código (hay que guiar a ajustes del navegador).
 
-* Se pide permiso de notificación.
-* Se intenta registrar una notificación web/PWA.
-* Se muestra estado de permisos.
-* Si no se pueden activar notificaciones, se mantiene fallback visual dentro de la app.
-* Se muestra claramente la próxima hora sugerida.
-* Eventualmente se permite copiar/crear recordatorio manual.
+**A. Permiso de notificaciones (priming en contexto)**
+
+1. No pedir el permiso nativo al abrir la app (anti-patrón: alto rechazo).
+2. Pedirlo cuando el usuario setea su **primer recordatorio** (elige 2h / 2h30 / 3h al guardar lactancia). Antes del prompt nativo, mostrar un *pre-prompt* explicativo: "¿Querés que te avise cuando sea la próxima toma?" → [Sí, avisame] / [Ahora no].
+3. Solo si acepta el pre-prompt → `Notification.requestPermission()`; si `granted`, registrar la suscripción push/PWA.
+4. Estados a contemplar: `default` (nunca preguntado), `granted`, `denied`.
+5. Nunca bloquear el flujo: el fallback visual (próxima toma en "Hoy") está siempre, con o sin permiso.
+
+**B. Confirmar al usuario que la alarma quedó lista**
+
+* Con permiso `granted` y recordatorio guardado → confirmación inmediata: "Listo, te aviso a las 05:40" (toast).
+* En "Hoy", la card "Próxima" refleja el estado del aviso:
+  * campanita / "te aviso" si la notificación está programada;
+  * "sin aviso" (con CTA para activarlo) si no hay permiso.
+* El usuario nunca queda en duda de si la alarma "está puesta".
+
+**C. Disparo de la notificación (la alarma)**
+
+* Al llegar `reminderAt` se dispara una notificación con **sonido**.
+* Acciones rápidas en la notificación, si la plataforma lo permite: "Registrar toma" y "Posponer 10 min" (snooze).
+* Limitaciones conocidas:
+  * En iPhone, las notificaciones web requieren la app **instalada como PWA** y tienen restricciones.
+  * No equivale a una alarma nativa del Clock de iPhone (por eso la V1 nativa usa notificaciones locales confiables).
+* Si el push no es viable o fue denegado: fallback visual siempre presente + opción de copiar/crear un recordatorio manual.
 
 ---
 
