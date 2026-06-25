@@ -1,0 +1,25 @@
+.gitignore
+  s_65cf2c077ec5ac::t_75f8fd0d8a6959 10
+src/components/copy-field.tsx
+  s_65cf2c077ec5ac::t_ccc284a402a49a 1-61
+app/family/page.tsx
+  s_65cf2c077ec5ac::t_ea4c509feaed85 117
+  s_65cf2c077ec5ac::t_3445b8681b3f6c 125,127
+  s_65cf2c077ec5ac::t_76efdb476ccddd 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "c5052e6dbad35e5097e95ea7140926be309c46ac",
+  "prompts": {},
+  "sessions": {
+    "s_65cf2c077ec5ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "caa03e84-6974-4827-bb62-c5e2c0b3e1ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
