@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getFamilyContext } from "@/src/data/context";
 import { isSupabaseConfigured } from "@/src/lib/supabase/config";
+import { CopyField } from "@/src/components/copy-field";
 
 import { createFamilyInviteAction } from "./actions";
 
@@ -113,7 +114,7 @@ export default async function FamilyPage({ searchParams }: FamilyPageProps) {
       {params.code ? (
         <section className="mt-4 rounded-[var(--radius-lg)] border border-[var(--primary)] bg-[var(--primary-tint)] p-5">
           <p className="text-sm font-bold text-[var(--ink-soft)]">
-            Link de invitación
+            Invitación generada
           </p>
           {params.email ? (
             <p className="mt-1 truncate text-sm font-bold text-[var(--foreground)]">
@@ -121,16 +122,9 @@ export default async function FamilyPage({ searchParams }: FamilyPageProps) {
             </p>
           ) : null}
           {inviteUrl ? (
-            <p className="mt-3 select-all break-all rounded-[var(--radius-md)] bg-[var(--surface-strong)] px-4 py-4 text-sm font-bold leading-6">
-              {inviteUrl}
-            </p>
+            <CopyField label="Link de invitación" value={inviteUrl} />
           ) : null}
-          <p className="mt-4 text-sm font-bold text-[var(--ink-soft)]">
-            Código manual
-          </p>
-          <p className="mt-3 select-all rounded-[var(--radius-md)] bg-[var(--surface-strong)] px-4 py-4 text-center text-3xl font-extrabold tracking-[0.22em]">
-            {params.code}
-          </p>
+          <CopyField label="Código manual" value={params.code} emphasis />
           <p className="mt-3 text-sm font-semibold leading-5 text-[var(--ink-soft)]">
             Compartile el link. Si algo falla, puede entrar a `/join` y pegar
             el código manualmente. {expiresAt ? `Vence el ${expiresAt}.` : null}
