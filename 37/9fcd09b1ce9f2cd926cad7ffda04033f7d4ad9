@@ -1,0 +1,28 @@
+src/components/today-client.tsx
+  s_72d71b2abc110f::t_61917126741d69 445-449,475,477-478
+PRD.md
+  s_72d71b2abc110f::t_d7ca4b9f75bbcf 1809-1854
+src/components/voice-button.tsx
+  s_72d71b2abc110f::t_a7391074134bf7 157,162
+  s_72d71b2abc110f::t_1a48994816264a 167
+bitacora.md
+  s_72d71b2abc110f::t_6a2f9b76b162f3 3-32
+app/globals.css
+  s_72d71b2abc110f::t_14032572d9a051 90-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "379fcd09b1ce9f2cd926cad7ffda04033f7d4ad9",
+  "prompts": {},
+  "sessions": {
+    "s_72d71b2abc110f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63b2966-58ae-41cf-887a-f5de526868d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    }
+  }
+}
