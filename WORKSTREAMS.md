@@ -334,7 +334,11 @@ Acuerdos vigentes para evitar que dos sesiones se pisen:
 - **`voice-button.tsx` es de WS3 (Codex).** WS1 (UI) NO edita su mecanica (MediaRecorder, estados, parser). Si la UI necesita ajustar tamano/forma/posicion del boton, se hace desde el layout (`today-client.tsx`) o se exponen props en el componente; no se edita su interior desde dos sesiones a la vez.
 - **`today-client.tsx` lo tocan WS1 y WS3.** Antes de editarlo, releer el estado actual (cambia seguido). El nav (pill + boton de voz) es de WS1; el wiring de datos/voz (`voiceParser`, `submitVoiceAudio`, `confirmVoiceEvent`) es de WS3.
 - **Confirmacion de voz (WS5):** la `VoiceConfirmationCard` se renderiza como bottom-sheet `fixed` (overlay a nivel viewport), NO dentro del nav/pill. Resuelto 2026-06-25.
-- **Mientras se trabaje en paralelo:** commitear seguido para tener checkpoints. Idealmente pasar a branches por workstream en vez de compartir `main`.
+- **Flujo de trabajo (decidido 2026-06-25): branch por workstream, UNA sesion a la vez.**
+  - NO correr Claude y Codex editando en simultaneo en esta misma carpeta: comparten el working tree y el `HEAD`, asi que las branches NO los aislan. Para paralelo real harian falta git worktrees (carpetas separadas).
+  - Al empezar una subfeature: `git switch -c feat/<workstream>` (ej. `feat/ui-today`, `feat/voice-parser`).
+  - Al terminar: `npm run lint`, commitear, y mergear a `main`: `git switch main && git merge feat/<workstream>`.
+  - `main` es la rama de integracion: siempre debe compilar y lintear. Se commitea seguido como checkpoint.
 
 ## Mini-checkpoint de aprendizaje
 
