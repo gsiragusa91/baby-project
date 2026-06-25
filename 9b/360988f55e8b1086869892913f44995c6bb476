@@ -1,0 +1,29 @@
+WORKSTREAMS.md
+  s_72d71b2abc110f::t_ca9ed755412375 330-338
+bitacora.md
+  s_5f65b4d55bfc8f::t_94e53e655d4e98 3-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "9b360988f55e8b1086869892913f44995c6bb476",
+  "prompts": {},
+  "sessions": {
+    "s_5f65b4d55bfc8f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef9a2-9fd6-7031-a7fc-3a0d5f009521",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    },
+    "s_72d71b2abc110f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63b2966-58ae-41cf-887a-f5de526868d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    }
+  }
+}
