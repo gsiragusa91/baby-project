@@ -56,6 +56,12 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  function readableError(error: unknown, fallback: string) {
+    return error instanceof Error && error.message.trim().length > 0
+      ? error.message
+      : fallback;
+  }
+
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -74,8 +80,10 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
           const parsed = await onSubmitAudio(blob);
           setResult(parsed);
           setState("result");
-        } catch {
-          setErrorMsg("No pude procesar el audio. Intentá de nuevo.");
+        } catch (error) {
+          setErrorMsg(
+            readableError(error, "No pude procesar el audio. Intentá de nuevo.")
+          );
           setState("error");
         }
       };
@@ -102,22 +110,29 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
   }
 
   if (state === "result" && result) {
+    // La tarjeta de confirmación se muestra como bottom-sheet fixed (overlay
+    // a nivel viewport), no en el lugar del botón. Así no queda atrapada dentro
+    // de la pill del nav. La lógica de guardado/descarte se mantiene intacta.
     return (
-      <div className="px-4 pb-4">
-        <VoiceConfirmationCard
-          result={result}
-          onConfirm={async () => {
-            setState("saving");
-            try {
-              await onConfirm?.(result);
-              reset();
-            } catch {
-              setErrorMsg("No pude guardar el registro. Intentá de nuevo.");
-              setState("error");
-            }
-          }}
-          onDiscard={reset}
-        />
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-5 backdrop-blur-sm">
+        <div className="w-full max-w-[420px]">
+          <VoiceConfirmationCard
+            result={result}
+            onConfirm={async () => {
+              setState("saving");
+              try {
+                await onConfirm?.(result);
+                reset();
+              } catch (error) {
+                setErrorMsg(
+                  readableError(error, "No pude guardar el registro. Intentá de nuevo.")
+                );
+                setState("error");
+              }
+            }}
+            onDiscard={reset}
+          />
+        </div>
       </div>
     );
   }

@@ -20,8 +20,8 @@
 
 ### Pendiente
 
-* Resolver donde renderiza la `VoiceConfirmationCard`: hoy el `VoiceButton` la dibuja en su lugar; dentro de la pill no encaja. Deberia ser overlay/sheet a nivel pantalla (coordinar con WS3/WS5).
-* Definir dueno unico de `voice-button.tsx` (WS3). Si la UI necesita ajustar tamano/forma, exponer props en vez de que dos sesiones lo editen.
+* RESUELTO: la `VoiceConfirmationCard` se muestra como bottom-sheet `fixed` (overlay a nivel viewport), ya no dentro de la pill. La logica de guardado de Codex (estados saving/error, onConfirm) quedo intacta.
+* ACORDADO: `voice-button.tsx` es de Codex (WS3). La UI (WS1) define posicion/separacion del nav en `today-client`; cambios de tamano/forma del chip se consensuan o se exponen como props, para que no lo editen dos sesiones a la vez.
 * Pasar a branches reales (`feat/ui-today`) en vez de trabajar todos sobre `main`.
 * Opcional: quitar el label del mic para fidelidad total al mockup aprobado (hoy se mantiene por feedback de estado).
 
@@ -239,6 +239,28 @@
 
 ### Validacion tecnica
 
+* `npm run lint` paso correctamente.
+* `npx tsc --noEmit` paso correctamente.
+* `npm run build` paso correctamente.
+
+## 2026-06-24 — Voz: preparacion para test local
+
+### Avance
+
+* Se agrego `npm run check:voice` para validar Supabase + OpenAI antes de probar audios.
+* Se mejoraron los errores visibles del boton de voz para mostrar el mensaje real del backend.
+* Se documento el loop de prueba de voz v0 en `README.md`.
+* Se verifico que Supabase responde con URL y anon key locales.
+* Se confirmo que la app local responde en `http://localhost:3000`.
+
+### Bloqueo actual
+
+* Falta `OPENAI_API_KEY` en `.env.local`; sin esa key el parser de voz no puede transcribir audios reales.
+
+### Validacion tecnica
+
+* `npm run check:supabase` paso para URL y anon key.
+* `npm run check:voice` falla correctamente por falta de `OPENAI_API_KEY`.
 * `npm run lint` paso correctamente.
 * `npx tsc --noEmit` paso correctamente.
 * `npm run build` paso correctamente.

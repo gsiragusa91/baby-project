@@ -221,6 +221,12 @@ export default async function InvitePage({
   const expiresAt = formatExpiration(preview.invite_expires_at);
 
   if (context.status === "ready") {
+    const currentEmail = context.user.email?.toLowerCase() ?? "";
+
+    if (currentEmail !== preview.invited_email.toLowerCase()) {
+      return <InvalidInvite message={messageCopy("email-mismatch") ?? undefined} />;
+    }
+
     redirect("/");
   }
 

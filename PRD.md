@@ -12,7 +12,7 @@ La funcionalidad diferencial del producto será la **carga por voz**, permitiend
 
 La app deberá transcribir ese audio, clasificarlo, interpretarlo y proponer un registro estructurado para que el usuario confirme antes de guardarlo.
 
-El MVP será una web app con persistencia real en Supabase y audio real procesado con IA. No será todavía una app pública ni una experiencia completa de onboarding familiar. La V1 será una app nativa reutilizando la mayor cantidad posible de lógica, backend y modelo de datos.
+El MVP será una web app con persistencia real en Supabase, acceso compartido madre/padre e invitación familiar controlada por email. No será todavía una app pública ni un sistema completo de cuidadores/roles avanzados. La V1 será una app nativa reutilizando la mayor cantidad posible de lógica, backend y modelo de datos.
 
 ---
 
@@ -153,12 +153,14 @@ Debe permitir:
 * Ver resumen del día.
 * Persistir eventos en Supabase.
 * Permitir que madre y padre vean los mismos datos.
+* Crear la familia y el bebé inicial desde la app.
+* Invitar a la madre/padre por email mediante link y código manual de respaldo.
 
 ### Fuera del MVP
 
 * Onboarding público.
 * Soporte multi-bebé.
-* Flujo completo de invitación a cuidadores.
+* Flujo completo de invitación a cuidadores externos.
 * Roles avanzados de familia.
 * Sueño.
 * Fotos de pañales.
@@ -171,6 +173,68 @@ Debe permitir:
 * Diagnóstico o recomendación médica.
 
 ---
+
+## 6.1.1 Flujo de login, registro e invitación familiar
+
+El MVP usa **usuarios individuales de Supabase Auth**. Madre y padre no comparten contraseña: cada adulto tiene su propio usuario, y ambos quedan asociados al mismo `family_id` mediante `family_members`.
+
+La primera persona que se registra crea la familia y el bebé inicial. La segunda persona entra mediante una invitación ligada a su email. El código/link no es genérico: solo puede usarlo el email invitado.
+
+```mermaid
+flowchart TD
+  Start["Usuario abre la WebApp"] --> HasSession{"¿Tiene sesión activa?"}
+
+  HasSession -- "No" --> Login["/login"]
+  Login --> LoginChoice{"¿Qué quiere hacer?"}
+  LoginChoice -- "Entrar" --> SignIn["Ingresar email + contraseña"]
+  LoginChoice -- "Crear cuenta" --> SignUp["/signup"]
+  LoginChoice -- "Tengo invitación" --> JoinManual["/join"]
+
+  SignUp --> NewAccount["Crear usuario en Supabase Auth"]
+  NewAccount --> EmailConfirm{"¿Supabase requiere confirmar email?"}
+  EmailConfirm -- "Sí" --> ConfirmEmail["Confirmar email y volver a la app"]
+  EmailConfirm -- "No" --> ResolveContext["Resolver contexto familiar"]
+  ConfirmEmail --> SignIn
+  SignIn --> ResolveContext
+
+  HasSession -- "Sí" --> ResolveContext
+  ResolveContext --> HasFamily{"¿El usuario ya tiene family_members?"}
+
+  HasFamily -- "Sí" --> Today["Hoy: mismo bebé y eventos compartidos"]
+  HasFamily -- "No" --> EntryType{"¿Llegó desde invitación?"}
+
+  EntryType -- "No" --> Onboarding["/onboarding"]
+  Onboarding --> CreateInitial["Crear families + family_members + babies"]
+  CreateInitial --> Today
+
+  EntryType -- "Sí, link /invite/[code]" --> InvitePreview["Validar invitación y email invitado"]
+  EntryType -- "Sí, código manual /join" --> JoinCode["Pegar código"]
+  JoinCode --> InvitePreview
+
+  InvitePreview --> InviteValid{"¿Invitación válida, no usada y no vencida?"}
+  InviteValid -- "No" --> InviteError["Mostrar error y fallback a /join"]
+  InviteValid -- "Sí" --> EmailMatch{"¿Email logueado = email invitado?"}
+  EmailMatch -- "No" --> EmailError["Mostrar error: invitación pertenece a otro email"]
+  EmailMatch -- "Sí" --> JoinFamily["Crear family_members para esa familia"]
+  JoinFamily --> Today
+
+  Today --> InviteParent["/family: invitar otro adulto"]
+  InviteParent --> EnterEmail["Ingresar email de la madre/padre"]
+  EnterEmail --> CreateInvite["Crear family_invites con code + invited_email + expires_at"]
+  CreateInvite --> ShareLink["Compartir link /invite/[code]\nFallback: código manual"]
+  ShareLink --> Start
+```
+
+### Reglas del flujo
+
+* Si el usuario no tiene sesión, debe iniciar sesión o crear cuenta.
+* Si el usuario tiene sesión pero no tiene familia, la app decide entre:
+  * `/onboarding` para crear familia y bebé inicial.
+  * `/invite/[code]` o `/join` para unirse a una familia existente.
+* La invitación guarda `invited_email`; el backend valida que el email logueado coincida antes de crear `family_members`.
+* El link de invitación es el camino principal.
+* El código manual en `/join` queda como fallback.
+* El envío automático de email queda fuera del MVP: por ahora el link se comparte manualmente.
 
 ## 6.2 Pantalla “Hoy”
 
@@ -836,68 +900,58 @@ Opcional futuro:
 
 ## 8.1.1 Modelo de acceso compartido
 
-El MVP necesita ser compartido por madre y padre desde el inicio. Hay tres opciones:
+El MVP usa **usuarios individuales con Supabase Auth** y una familia compartida por `family_id`.
 
-### Opción A — Cuenta compartida
+### Decisión implementada
 
-Madre y padre usan el mismo usuario/login.
+* El primer adulto crea su cuenta en `/signup`.
+* Si ese usuario no tiene familia, completa `/onboarding`.
+* `/onboarding` crea en una sola operación:
+  * `families`
+  * `family_members`
+  * `babies`
+* Desde `/family`, un adulto con rol `parent` invita a otro adulto ingresando su email.
+* La invitación crea un registro en `family_invites` con:
+  * `family_id`
+  * `invited_email`
+  * `code`
+  * `role`
+  * `expires_at`
+  * `used_at`
+* La persona invitada entra por `/invite/[code]` o, como fallback, por `/join`.
+* El backend solo permite unirse si el email autenticado coincide con `invited_email`.
 
-Ventajas:
-
-* Más rápido de implementar.
-* Menos fricción inicial.
-
-Desventajas:
+### Por qué no cuenta compartida
 
 * No permite saber quién registró cada evento.
-* Complica permisos futuros.
 * Genera deuda para separar usuarios después.
+* Complica permisos, auditoría y futura app nativa.
 
-### Opción B — Usuarios individuales, familia creada manualmente
+### Qué queda fuera del MVP
 
-Cada adulto tiene su usuario de Supabase Auth, pero no existe todavía un flujo público de invitación. La familia, el bebé y la relación `family_members` pueden crearse manualmente o con un seed inicial.
-
-Ventajas:
-
-* Permite compartir datos desde el inicio.
-* Permite auditar quién registró cada evento.
-* Evita migrar de cuenta compartida a multiusuario.
-* No requiere construir onboarding/invitaciones todavía.
-
-Desventajas:
-
-* Requiere implementar Auth mínima.
-* Requiere una configuración inicial manual.
-
-### Opción C — Invitaciones completas
-
-Cada familia puede invitar cuidadores desde la app.
-
-Ventajas:
-
-* Es la solución de producto más completa.
-
-Desventajas:
-
-* Es demasiado alcance para el MVP.
-
-### Recomendación MVP
-
-Usar **Opción B**: usuarios individuales con Supabase Auth, una familia inicial y un bebé inicial configurados manualmente. El flujo de invitación queda para iteración posterior.
+* Invitaciones a cuidadores externos con roles finos.
+* Envío automático del email de invitación.
+* Administración avanzada de miembros.
+* Transferencia de ownership de familia.
 
 ## 8.2 Servicios principales
 
 ```text
 Frontend Web
   ├── Home / Today
+  ├── Login / Signup
+  ├── Onboarding familiar
+  ├── Family invite
+  ├── Join invite
   ├── Diaper form
   ├── Feeding form
   ├── Questions
   ├── Voice recorder
   ├── Voice confirmation card
-  └── Minimal auth screen
+  └── Mobile app shell
 
 Backend API
+  ├── Server actions auth/onboarding/invites
   ├── /api/voice/parse
   ├── /api/events/confirm
   ├── /api/diapers
@@ -909,6 +963,11 @@ Backend API
 Supabase
   ├── Auth
   ├── Postgres
+  │   ├── families
+  │   ├── family_members
+  │   ├── family_invites
+  │   ├── babies
+  │   └── event tables
   └── Storage (future photos, not MVP)
 
 OpenAI
@@ -947,7 +1006,7 @@ flowchart TB
 
   subgraph Supabase["Supabase"]
     SupaAuth["Auth"]
-    DB["Postgres\nfamilies\nfamily_members\nbabies\ndiaper_events\nfeeding_events\nquestions\nreminders\nvoice_parse_logs"]
+    DB["Postgres\nfamilies\nfamily_members\nfamily_invites\nbabies\ndiaper_events\nfeeding_events\nquestions\nreminders\nvoice_parse_logs"]
     Storage["Storage\nfotos futuras"]
   end
 
@@ -1344,11 +1403,13 @@ Esta app ayuda a registrar información del bebé y organizar dudas. No reemplaz
 
 ## Epic 2 — Modelo familiar
 
-1. Crear familia inicial.
-2. Crear bebé inicial.
-3. Asociar usuarios madre/padre a la familia.
+1. Crear familia inicial desde `/onboarding`.
+2. Crear bebé inicial desde `/onboarding`.
+3. Asociar al primer adulto mediante `family_members`.
 4. Resolver `familyId` y `babyId` activos desde la sesión.
-5. Dejar flujo de invitación para una iteración posterior.
+5. Permitir invitación por email desde `/family`.
+6. Permitir unión por link `/invite/[code]`.
+7. Mantener `/join` como fallback con código manual.
 
 ## Epic 3 — Pañales
 
@@ -1535,7 +1596,7 @@ Comportamiento:
 
 ---
 
-# 14. Decisiones cerradas y pendientes antes de codear
+# 14. Decisiones cerradas y pendientes actuales
 
 Esta sección separa lo que ya quedó decidido para el MVP de lo que todavía puede bloquear el desarrollo.
 
@@ -1551,13 +1612,13 @@ Esta sección separa lo que ya quedó decidido para el MVP de lo que todavía pu
 8. Sueño liviano queda fuera del MVP inicial.
 9. Resumen para consulta médica queda fuera del MVP inicial.
 10. No se guardan audios originales por defecto.
+11. El primer adulto crea familia/bebé desde la app.
+12. El segundo adulto se suma con invitación ligada a email.
 
 ## 14.1 Producto — pendientes críticas
 
 1. Nombre del producto.
-2. Confirmar modelo de acceso para el primer build:
-   * recomendado: usuarios individuales con Supabase Auth y familia creada manualmente;
-   * alternativa rápida: cuenta compartida.
+2. Definir si en la alfa el link de invitación se comparte manualmente o si se automatiza por email/WhatsApp.
 3. ¿Qué nivel de edición histórica se permite?
 4. ¿Se pueden borrar eventos o solo archivarlos?
 5. ¿Se incluye pañal seco desde MVP?
@@ -1943,18 +2004,24 @@ El MVP no incluye:
 
 # 20. Próximo paso recomendado
 
-Antes de codear:
+Desde el estado actual:
 
-1. Confirmar modelo de acceso: usuarios individuales con familia creada manualmente vs cuenta compartida.
-2. Cerrar decisiones mínimas de lactancia, pañales y voz.
-3. Definir schema Supabase inicial.
-4. Definir JSON Schema de extracción por voz.
-5. Diseñar wireframe simple de “Hoy”.
-6. Crear proyecto Next.js + Supabase Auth.
-7. Implementar eventos manuales contra Supabase.
-8. Integrar grabación de audio real.
-9. Integrar transcripción y parser estructurado.
-10. Testear con audios reales de 5 a 20 segundos.
-11. Ajustar UX de confirmación.
+1. Probar end-to-end el flujo de invitación:
+   * padre/madre 1 crea familia y bebé;
+   * genera invitación por email;
+   * padre/madre 2 abre `/invite/[code]`;
+   * crea cuenta o inicia sesión;
+   * queda asociado al mismo `family_id`.
+2. Probar registro manual real:
+   * pañal;
+   * lactancia;
+   * duda;
+   * timeline y contadores de Hoy.
+3. Cerrar decisiones mínimas de lactancia, pañales y voz.
+4. Validar JSON Schema de extracción por voz.
+5. Integrar grabación de audio real.
+6. Integrar transcripción y parser estructurado.
+7. Testear con audios reales de 5 a 20 segundos.
+8. Ajustar UX de confirmación.
 
 La prioridad debe ser construir una versión pequeña, estable y usable en contexto real, antes de expandir el alcance.

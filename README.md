@@ -75,6 +75,12 @@ Primer hito implementado como base tecnica:
    npm run check:supabase
    ```
 
+9. Verificar prerequisitos de voz:
+
+   ```bash
+   npm run check:voice
+   ```
+
 ## Primer loop a probar
 
 1. Crear cuenta.
@@ -82,6 +88,34 @@ Primer hito implementado como base tecnica:
 3. Ver pantalla Hoy.
 4. Crear panal.
 5. Confirmar que aparece en timeline y cambia el contador.
+
+## Loop de voz v0
+
+Requisito: `OPENAI_API_KEY` configurada en `.env.local`.
+
+1. Entrar a Hoy con un usuario que tenga familia y bebe.
+2. Tocar `Grabar`.
+3. Decir un audio corto, por ejemplo:
+
+   ```text
+   Panal pis ahora
+   ```
+
+   ```text
+   Arranco lactancia ahora, izquierda doce minutos, alarma en dos horas y media
+   ```
+
+   ```text
+   Duda para la pediatra: es normal que tenga hipo despues de tomar?
+   ```
+
+4. Tocar `Detener`.
+5. Revisar la tarjeta detectada.
+6. Tocar `Confirmar` para guardar o descartar si la interpretacion no sirve.
+7. Confirmar que Hoy refresca el timeline y los contadores.
+
+En esta v0 no hay edicion antes de guardar: si algo sale mal, descartar y cargar
+manual o repetir el audio.
 
 ## Loop de acceso compartido
 
