@@ -88,7 +88,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </button>
         </form>
         <Link
-          className="mt-5 block text-center text-sm font-bold text-[var(--primary)]"
+          className="mt-5 block text-center text-sm font-bold text-[var(--ink-soft)]"
+          href="/reset"
+        >
+          Olvidé mi contraseña
+        </Link>
+        <Link
+          className="mt-3 block text-center text-sm font-bold text-[var(--primary)]"
           href="/signup"
         >
           Crear cuenta
