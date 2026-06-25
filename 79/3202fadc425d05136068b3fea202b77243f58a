@@ -1,0 +1,55 @@
+scripts/check-voice-local.mjs
+  s_26e2786a1c1d31::t_b6b542969da79e 1-122
+README.md
+  s_26e2786a1c1d31::t_98419fa38ec066 78-83,92-118
+bitacora.md
+  s_72d71b2abc110f::t_933a7af047632e 23-24
+  s_26e2786a1c1d31::t_032df90fab20a3 245-266
+PRD.md
+  s_5f65b4d55bfc8f::t_abed425dbde229 1406-1408,1410-1412,1615-1616,1621
+  s_5f65b4d55bfc8f::t_0ee4933b1c0ba6 1009
+  s_5f65b4d55bfc8f::t_c8fc5bbba0372d 2007-2025
+  s_5f65b4d55bfc8f::t_ddf64e3bbe6df4 1599
+  s_5f65b4d55bfc8f::t_1b857021a5d974 15,156-157,163,177-237
+  s_5f65b4d55bfc8f::t_f9697d44dd7555 903-924,928,930,932-935
+  s_5f65b4d55bfc8f::t_00f213025e7c10 942-945,951,954,966-970
+package.json
+  s_26e2786a1c1d31::t_06f99b0dbcbdac 10-11
+app/invite/[code]/page.tsx
+  s_5f65b4d55bfc8f::t_8a3f78cfc6b46b 224-229
+src/components/voice-button.tsx
+  s_26e2786a1c1d31::t_ac6af4f01625f3 59-64,83-86
+  s_72d71b2abc110f::t_17bc139a6c31fa 113-115,117-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "793202fadc425d05136068b3fea202b77243f58a",
+  "prompts": {},
+  "sessions": {
+    "s_26e2786a1c1d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efa50-45e9-7ae0-9a17-15f86e5bb4bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    },
+    "s_5f65b4d55bfc8f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef9a2-9fd6-7031-a7fc-3a0d5f009521",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    },
+    "s_72d71b2abc110f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63b2966-58ae-41cf-887a-f5de526868d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    }
+  }
+}
