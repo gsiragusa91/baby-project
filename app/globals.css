@@ -87,6 +87,12 @@ textarea {
   min-width: 52px;
 }
 
+/* Glow del botón de voz (Mix V2+V3): ring tint + resplandor candy.
+   Le da "peso" al chip principal sin agrandarlo de más. */
+.mic-glow {
+  box-shadow: 0 0 0 4px var(--primary-tint), 0 0 18px rgba(255, 150, 194, 0.45);
+}
+
 .field {
   width: 100%;
   border-radius: var(--radius-md);

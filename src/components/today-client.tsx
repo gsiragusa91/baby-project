@@ -442,10 +442,11 @@ export function TodayClient({
 
       <ActivePanel panel={panel} nowLocal={summary.nowLocal} />
 
-      {/* Nav flotante: UNA sola pill con las 4 acciones integradas (patrón tab bar
-          Material 3 / iOS). La voz se diferencia SUTIL por el chip candy relleno,
-          no por tamaño — mismo footprint que el resto. */}
-      <nav className="pointer-events-none sticky bottom-0 z-20 mt-auto flex justify-center px-4 pb-5">
+      {/* Nav flotante: pill con las acciones manuales + mic de VOZ SEPARADO a la
+          derecha (zona del pulgar). El mic se distingue por chip candy + glow y un
+          toque más de tamaño (Mix V2+V3). items-center alinea ambos elementos. */}
+      <nav className="pointer-events-none sticky bottom-0 z-20 mt-auto flex items-center justify-center gap-3 px-4 pb-5">
+        {/* Pill — acciones manuales (secundarias) */}
         <div
           className="pointer-events-auto flex items-center gap-1 rounded-full border border-[var(--line)] bg-[rgba(33,29,46,0.85)] px-2 py-1.5 backdrop-blur-xl"
           style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
@@ -471,8 +472,10 @@ export function TodayClient({
           >
             <CircleHelp size={20} />
           </PillAction>
+        </div>
 
-          {/* Voz — integrada como 4º ítem, diferenciada por el chip candy */}
+        {/* Voz — protagonista, separada, a la derecha (zona del pulgar) */}
+        <div className="pointer-events-auto">
           <VoiceButton
             onConfirm={confirmVoiceEvent}
             onSubmitAudio={submitVoiceAudio}

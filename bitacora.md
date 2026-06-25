@@ -1,5 +1,35 @@
 # Bitacora
 
+## 2026-06-25 — Design system dark-candy + nav voice-first (UI Hoy)
+
+### Avance
+
+* Se definio el sistema de diseno: tema dark-only, estetica "playful candy", regla 60-30-10. Tokens en `app/globals.css` (superficies, texto, categorias sleep/feed/diaper, marca, semantico danger, radios).
+* Tipografia Nunito; pantalla Hoy reestilizada consumiendo tokens; login adaptado.
+* Nav voice-first: pill flotante con acciones manuales (Panal/Toma/Duda) + boton de voz SEPARADO a la derecha (thumb zone), chip candy con glow + un toque mas de tamano (variante "Mix V2+V3", 50px).
+* Se itero el diseno del nav en un mockup standalone `public/nav-explorations.html` (sin tocar React) para comparar variantes.
+* Se documento todo en el PRD seccion 16.5.
+
+### Conceptos trabajados
+
+* Regla 60-30-10 y "color como informacion" (cada actividad tiene su color con un trabajo).
+* Tokens como contrato: cambiar un valor en un lugar actualiza todo (lo probo `page.tsx`, que se volvio dark sin tocarlo).
+* Dark mode real: elevacion con luz (no sombra), cards de color como tint y no relleno, texto off-white (no blanco puro), `color-scheme: dark` para controles nativos.
+* Thumb zone (zona del pulgar) como criterio de ubicacion del boton principal.
+* Riesgo de dos sesiones (Claude + Codex) editando el mismo archivo sin commits: un edit fallo por pisarse. Mitigacion: commit baseline + branches por workstream.
+
+### Pendiente
+
+* Resolver donde renderiza la `VoiceConfirmationCard`: hoy el `VoiceButton` la dibuja en su lugar; dentro de la pill no encaja. Deberia ser overlay/sheet a nivel pantalla (coordinar con WS3/WS5).
+* Definir dueno unico de `voice-button.tsx` (WS3). Si la UI necesita ajustar tamano/forma, exponer props en vez de que dos sesiones lo editen.
+* Pasar a branches reales (`feat/ui-today`) en vez de trabajar todos sobre `main`.
+* Opcional: quitar el label del mic para fidelidad total al mockup aprobado (hoy se mantiene por feedback de estado).
+
+### Validacion tecnica
+
+* `npm run lint` paso correctamente.
+* `/preview` responde 200 con el nuevo nav.
+
 ## 2026-06-24 — Invitacion para segundo adulto
 
 ### Avance

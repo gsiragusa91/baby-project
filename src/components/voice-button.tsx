@@ -154,17 +154,17 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
           disabled={state === "processing" || state === "saving"}
           className={[
             "relative z-10 flex items-center justify-center rounded-[var(--radius-md)] transition-transform active:scale-95",
-            "w-11 h-11",
+            "w-[50px] h-[50px]",
             state === "recording"
               ? "bg-[var(--danger)] text-white"
               : state === "processing" || state === "saving"
               ? "bg-[var(--surface-strong)] text-[var(--ink-soft)] cursor-wait"
-              : "bg-[var(--primary)] text-[var(--primary-ink)] shadow-lg"
+              : "bg-[var(--primary)] text-[var(--primary-ink)] mic-glow"
           ].join(" ")}
           type="button"
           onClick={state === "recording" ? stopRecording : startRecording}
         >
-          {state === "recording" ? <Square size={16} fill="currentColor" /> : <Mic size={20} />}
+          {state === "recording" ? <Square size={18} fill="currentColor" /> : <Mic size={22} />}
         </button>
       </div>
 

@@ -1806,6 +1806,52 @@ Esta app ayuda a registrar información. No reemplaza la consulta con profesiona
 
 ---
 
+## 16.5 Sistema de diseño visual (v1 — definido)
+
+Esta sección reemplaza el placeholder anterior y resuelve las preguntas abiertas de UI/UX (14.7). Los tokens viven en `app/globals.css` como variables CSS (single source of truth) y se consumen vía Tailwind.
+
+### Principios visuales
+
+* **Tema dark-only.** Decisión deliberada: el caso de uso dominante es nocturno (registrar a las 3am con una mano). Evita fatiga visual y simplifica el MVP (un solo tema). Light mode queda como iteración posterior.
+* **Estética "playful candy" calma.** Personalidad cálida y amigable, pero sin saturar: se aplica la regla **60-30-10** (60% superficies oscuras, 30% texto, 10% color de acento). El color candy vive en el 10%, no en los fondos.
+* **El color es información.** Cada actividad tiene un color con un trabajo, para escanear sin leer: sueño, lactancia, pañal.
+* **Mobile-first, uso con una mano, touch targets ≥ 44px.**
+
+### Tokens (foundations)
+
+| Capa | Token | Valor | Uso |
+|------|-------|-------|-----|
+| Superficie | `--background` | `#14121C` | Fondo app |
+| Superficie | `--surface` | `#211D2E` | Cards |
+| Superficie | `--surface-strong` | `#2B2538` | Sheets / modales |
+| Línea | `--line` | `#332C44` | Bordes |
+| Texto | `--foreground` | `#F2EEF7` | Texto primario (off-white) |
+| Texto | `--ink-soft` | `#A89FB5` | Texto secundario |
+| Categoría | `--sleep` | `#A99CFF` | Sueño (lila) |
+| Categoría | `--feed` | `#FFC078` | Lactancia (ámbar) |
+| Categoría | `--diaper` | `#5FE0C0` | Pañal (menta) |
+| Marca | `--primary` | `#FF96C2` | Acción principal / voz (bubblegum) |
+| Marca | `--primary-ink` | `#2B1622` | Texto sobre primary |
+| Semántico | `--danger` | `#FF8A8A` | Error / aviso |
+| Forma | `--radius-sm/md/lg/full` | `8/16/24/9999px` | Esquinas |
+
+En dark, las cards de color usan un **tint** (color a ~14% de opacidad) de fondo + el color pleno en el número/ícono. La elevación se expresa con luz (más claro = más cerca), no con sombra.
+
+### Tipografía
+
+* **Nunito** (Google Fonts), una sola familia, pesos 400/600/700/800. Redondeada y amigable, legible en tamaños chicos y en dark. Display = 800; body = 400/600.
+
+### Navegación y botón de voz (decisión clave)
+
+* **Voice-first.** La voz es el canal de carga principal (PRD 7.1). La pantalla Hoy tiene una **barra flotante (pill)** abajo con las acciones manuales secundarias (Pañal · Toma · Duda) y un **botón de voz separado a la derecha**, en la zona del pulgar.
+* El botón de voz es un **chip candy con glow** (ring tint + resplandor), levemente más grande que los íconos de la pill, pero no dominante de más. Diferenciación por color/peso, no por tamaño exagerado. Referencia: tab bar de Material 3 / iOS.
+* Al grabar, la IA clasifica la intención y el botón abre una **tarjeta de confirmación editable** (PRD 7.10): ningún evento de voz se guarda sin confirmación.
+* Tono: cálido y humano, no clínico ni infantil. Iconografía: línea (lucide), monocroma para lo secundario, candy para lo principal.
+
+> Exploraciones de UI en `public/nav-explorations.html` (mockup standalone para iterar variantes sin tocar React).
+
+---
+
 # 17. Riesgos
 
 ## 17.1 Riesgos de producto
