@@ -181,14 +181,6 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
           {state === "recording" ? <Square size={18} fill="currentColor" /> : <Mic size={22} />}
         </button>
       </div>
-
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-        {state === "idle" && "Grabar"}
-        {state === "recording" && "Detener"}
-        {state === "processing" && "…"}
-        {state === "saving" && "…"}
-        {state === "error" && "Reintentar"}
-      </p>
     </div>
   );
 }
