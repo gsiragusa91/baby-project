@@ -1,0 +1,19 @@
+src/components/voice-button.tsx
+  s_72d71b2abc110f::t_24d0e81396a209 141-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8565a7696328d7e22a43bbd2b308f835e8b5e953",
+  "prompts": {},
+  "sessions": {
+    "s_72d71b2abc110f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63b2966-58ae-41cf-887a-f5de526868d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <guido.siragusa@mercadolibre.com>"
+    }
+  }
+}
