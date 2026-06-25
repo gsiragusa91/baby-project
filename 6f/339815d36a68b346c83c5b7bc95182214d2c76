@@ -1,0 +1,21 @@
+VOICE_V0_HANDOFF.md
+  s_26e2786a1c1d31::t_2afd67384d6ae2 1-162
+bitacora.md
+  s_26e2786a1c1d31::t_895dd842065f48 287-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6f339815d36a68b346c83c5b7bc95182214d2c76",
+  "prompts": {},
+  "sessions": {
+    "s_26e2786a1c1d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efa50-45e9-7ae0-9a17-15f86e5bb4bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
