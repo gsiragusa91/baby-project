@@ -5,8 +5,9 @@
  * hacés que Alexa "anuncie" un texto por voz en ese dispositivo. No es una alarma
  * nativa de Alexa (eso no tiene API pública), es un anuncio hablado en el momento.
  *
- * El endpoint v3 /announcement acepta token + device + text como query params.
- * Docs: https://voicemonkey.io/docs
+ * API v3: POST https://api-v3.voicemonkey.io/announce con JSON { token, device, speech }.
+ * (Opcionales: voice, language, chime, audio… para sumar sonido/canción después.)
+ * Docs: https://voicemonkey.io/docs/api/announcement.html
  */
 
 export type VoiceMonkeyResult = { ok: boolean; error?: string };
@@ -25,13 +26,12 @@ export async function announceOnAlexa(text: string): Promise<VoiceMonkeyResult> 
     return { ok: false, error: "voicemonkey-not-configured" };
   }
 
-  const url = new URL("https://api-v3.voicemonkey.io/announcement");
-  url.searchParams.set("token", token);
-  url.searchParams.set("device", device);
-  url.searchParams.set("text", text);
-
   try {
-    const res = await fetch(url, { method: "GET" });
+    const res = await fetch("https://api-v3.voicemonkey.io/announce", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, device, speech: text })
+    });
     if (!res.ok) {
       return { ok: false, error: `voicemonkey-http-${res.status}` };
     }
