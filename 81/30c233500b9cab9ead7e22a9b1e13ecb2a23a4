@@ -1,0 +1,19 @@
+src/components/push-setup.tsx
+  s_edea8bd1eaaf95::t_6348349c1b2e0a 52-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "8130c233500b9cab9ead7e22a9b1e13ecb2a23a4",
+  "prompts": {},
+  "sessions": {
+    "s_edea8bd1eaaf95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890ea71b-4b1a-4405-9828-433d6e36df96",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
