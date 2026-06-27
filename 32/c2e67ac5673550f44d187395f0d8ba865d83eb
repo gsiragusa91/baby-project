@@ -1,0 +1,29 @@
+src/components/voice-button.tsx
+  s_edea8bd1eaaf95::t_3c18c6ed62d76a 68-70,79-80
+  s_edea8bd1eaaf95::t_30e90a22fcff74 7
+src/lib/mic.ts
+  s_edea8bd1eaaf95::t_63ea9a4f062094 1-35
+src/components/push-setup.tsx
+  s_edea8bd1eaaf95::t_0a2d2addb0e77c 6-7,9-16,18-20,22
+  s_edea8bd1eaaf95::t_52a7238ea926b7 64-69
+  s_edea8bd1eaaf95::t_4aa59dc48357af 80-87,89-90,92-106,109-111,113
+  s_edea8bd1eaaf95::t_0bb9a6ed0329d7 141,143
+bitacora.md
+  s_edea8bd1eaaf95::t_2d85b5488a1d23 3-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "32c2e67ac5673550f44d187395f0d8ba865d83eb",
+  "prompts": {},
+  "sessions": {
+    "s_edea8bd1eaaf95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890ea71b-4b1a-4405-9828-433d6e36df96",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
