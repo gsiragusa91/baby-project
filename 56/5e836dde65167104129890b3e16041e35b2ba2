@@ -1,0 +1,20 @@
+src/lib/voicemonkey.ts
+  s_edea8bd1eaaf95::t_d2c71e794e6308 8-10
+  s_edea8bd1eaaf95::t_859bdbf5d3bd7c 30-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "565e836dde65167104129890b3e16041e35b2ba2",
+  "prompts": {},
+  "sessions": {
+    "s_edea8bd1eaaf95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890ea71b-4b1a-4405-9828-433d6e36df96",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
