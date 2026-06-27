@@ -43,3 +43,36 @@ export async function announceOnAlexa(text: string): Promise<VoiceMonkeyResult> 
     };
   }
 }
+
+/**
+ * Dispara una RUTINA de Alexa (vía un "routine trigger" device de Voice Monkey).
+ * Sirve para algo más llamativo que la voz: poner una canción de Spotify, una
+ * alarma, etc. La rutina en sí se arma en la app de Alexa.
+ *
+ * Best-effort: si no está configurado o falla, devuelve ok:false sin tirar.
+ */
+export async function triggerAlexaRoutine(): Promise<VoiceMonkeyResult> {
+  const token = process.env.VOICEMONKEY_TOKEN;
+  const device = process.env.VOICEMONKEY_ROUTINE_DEVICE;
+
+  if (!token || !device) {
+    return { ok: false, error: "voicemonkey-routine-not-configured" };
+  }
+
+  try {
+    const res = await fetch("https://api-v3.voicemonkey.io/trigger", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, device })
+    });
+    if (!res.ok) {
+      return { ok: false, error: `voicemonkey-http-${res.status}` };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "voicemonkey-fetch-failed"
+    };
+  }
+}

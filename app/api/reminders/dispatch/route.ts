@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/src/lib/supabase/admin";
 import { sendPushToSubscriptions, type StoredSubscription } from "@/src/lib/push";
-import { announceOnAlexa } from "@/src/lib/voicemonkey";
+import { announceOnAlexa, triggerAlexaRoutine } from "@/src/lib/voicemonkey";
 
 // Este endpoint hace I/O con la base y con servicios externos: runtime Node.
 export const runtime = "nodejs";
@@ -84,8 +84,10 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3b. Alexa: anuncio por voz en el Echo (best-effort, no bloquea).
+      // 3b. Alexa: anuncio por voz + (si está configurada) una rutina más
+      //     llamativa (canción/alarma). Ambas best-effort, no bloquean.
       await announceOnAlexa(`Recordatorio: es hora de la próxima toma de ${name}.`);
+      await triggerAlexaRoutine();
 
       // 4. Marcamos enviado (aunque no haya suscripciones: ya lo "procesamos",
       //    no queremos que el cron lo reintente para siempre).
