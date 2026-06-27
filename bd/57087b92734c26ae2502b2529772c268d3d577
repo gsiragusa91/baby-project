@@ -1,0 +1,23 @@
+app/actions.ts
+  s_374db07aad0108::t_45ada2ae67e97c 184,188-212,353
+  s_374db07aad0108::t_5bf9ee11b54355 322-352
+  s_374db07aad0108::t_33c52245c40759 6
+  s_374db07aad0108::t_6a63d4af90879e 213
+  s_374db07aad0108::t_8fec1b31814fa7 354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "bd57087b92734c26ae2502b2529772c268d3d577",
+  "prompts": {},
+  "sessions": {
+    "s_374db07aad0108": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68e8ca37-2d46-4815-94c2-d03b5d5ad095",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
