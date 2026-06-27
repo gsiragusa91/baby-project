@@ -1,0 +1,21 @@
+src/components/voice-button.tsx
+  s_374db07aad0108::t_7d18443ae2306d 77-81
+src/components/today-client.tsx
+  s_374db07aad0108::t_8dacc884ea92d3 63-77,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "ac64c2786132cfca1fa00d577b4baede59cb0c27",
+  "prompts": {},
+  "sessions": {
+    "s_374db07aad0108": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68e8ca37-2d46-4815-94c2-d03b5d5ad095",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
