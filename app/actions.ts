@@ -117,7 +117,7 @@ export async function createFeedingAction(formData: FormData) {
       related_event_id: savedFeeding.id,
       remind_at: reminderAt,
       status: "scheduled",
-      channel: "none"
+      channel: "web_push"
     });
 
     if (reminderError) {
@@ -284,7 +284,7 @@ async function saveProposedVoiceEvent(
         related_event_id: savedFeeding.id,
         remind_at: reminderAt,
         status: "scheduled",
-        channel: "none"
+        channel: "web_push"
       });
 
       if (reminderError) {

@@ -1,5 +1,30 @@
 # Bitacora
 
+## 2026-06-27 — Alarmas que suenan: PWA + Web Push + Alexa (v0 opción B)
+
+### Avance
+* Las alarmas dejaron de ser solo un horario en pantalla: ahora se despachan.
+* **Scheduler** (`pg_cron` + `pg_net`): cada minuto Postgres llama a `/api/reminders/dispatch` con un header secreto leído de Supabase Vault. Migración `20260627120000_reminders_cron.sql`.
+* **Dispatcher** (`app/api/reminders/dispatch/route.ts`): cliente service-role (salta RLS), busca reminders `scheduled` vencidos, envía a los canales y marca `sent`/`failed`.
+* **Canal Web Push (PWA)**: `app/manifest.ts` + íconos, service worker `public/sw.js`, componente `PushSetup` (registra SW, pide permiso, suscribe), tabla `push_subscriptions` (RLS), route `/api/push/subscribe`, helper `src/lib/push.ts`. Reminders pasan a `channel: "web_push"`.
+* **Plan B sin dependencias**: la red de MeLi (VPN/DNS + fury con policy) bloqueaba instalar `web-push`. Se reescribió `src/lib/push.ts` con `node:crypto` puro — VAPID JWT (ES256) + cifrado aes128gcm (RFC 8291/8188). Cero deps, funciona también en Vercel. Verificado con test de ida-y-vuelta del cifrado + firma/verificación del JWT (ambos OK).
+* **Canal Alexa**: helper `src/lib/voicemonkey.ts` (anuncio por voz, best-effort).
+* Decisión: se **descartó** app nativa iOS (AlarmKit) — costo/stack no justificado para v0. Se eligió B (push real al celu, que es notificación) + Alexa.
+* M0 (micrófono) **diferido**: probablemente la PWA persista el permiso sola; se re-evalúa tras instalar.
+
+### Conceptos trabajados
+* **Estados de permiso** del navegador (`granted`/`denied`/`prompt`) y por qué "Permitir esta vez" deja el re-prompt.
+* **Service worker**: script en background que recibe el push aun con la app cerrada.
+* **Web Push / VAPID**: par de claves que firma los push; la pública también la usa el cliente al suscribirse.
+* **service-role vs RLS**: por qué el cron necesita un cliente que saltea RLS (no hay usuario logueado).
+* **pg_cron / pg_net**: Postgres como scheduler + cliente HTTP; secretos en Vault, no en git.
+* Límite de plataforma: en iOS el push exige PWA instalada; no existe API pública para alarma nativa de Alexa.
+
+### Validacion tecnica
+* `npx tsc --noEmit`: limpio (exit 0). `eslint` de todos los archivos tocados: 0 problemas.
+* Test del cifrado push (round-trip) y del JWT VAPID: ambos OK.
+* Pendiente de Guido: env vars, `supabase db push`, secrets de Vault, instalar PWA, cuenta Voice Monkey. Todo en `ALARMAS_SETUP.md`. (Ya no hay dependencias que instalar.)
+
 ## 2026-06-25 — PRD actualizado con flujo de acceso
 
 ### Avance
@@ -300,3 +325,63 @@
 * Probar audios reales desde Hoy.
 * Ajustar prompt/schema segun errores reales.
 * Luego avanzar con edicion antes de confirmar.
+
+## 2026-06-25 — Subida a GitHub + deploy en Vercel
+
+### Avance
+
+* Repo subido a GitHub propio (`gsiragusa91/baby-project`), publico.
+* Identidad separada del trabajo: cuenta personal `gsiragusa91` logueada en `gh` (la de MeLi queda intacta), y email de commits con override LOCAL al noreply de GitHub (global con mail MeLi sin tocar).
+* Se reescribieron los 9 commits viejos (firmados con mail MeLi) al noreply via `git filter-branch`, antes del primer push. Backup en `refs/original/`.
+* App deployada en Vercel via integracion con GitHub: cada `git push` redeploya solo. URL: https://joaco-project.vercel.app
+* Login funcionando end-to-end.
+
+### Concepto nuevo aprendido
+
+* Local vs remote en git: el remote (`origin`) es un apodo a la URL de la copia en la nube; el codigo sigue local tambien. Clonar = bajar + conectar; no hace falta re-clonar lo que ya tenes.
+* `.env.local` = variables de entorno (config secreta y por-entorno). No se sube: lo bloquea `.gitignore`. Los secretos no viajan con el codigo; cada entorno (Mac local / Vercel / vault de MeLi) tiene su propia copia, inyectada donde corre la app.
+* Config local vs global (git y npm): el archivo local del proyecto pisa al global solo en esa carpeta.
+* Supabase exige whitelist de Redirect URLs: aunque la app pida el redirect correcto, Supabase solo redirige a URLs autorizadas (si no, manda al Site URL).
+
+### Quedo flojo / para repasar
+
+* Por que `--global` vs local en el email (checkpoint Q3 sin responder).
+* El deploy fallo 1ra vez: lockfile apuntaba al registro privado de MeLi (furycloud) -> 403 en Vercel. Fix: `.npmrc` del proyecto con registro publico + repunteo del lockfile. Va a repetirse en cada proyecto personal.
+
+### Pendientes operativos
+
+* Decidir repo publico vs privado.
+* Limpiar refs de backup colgando (`backup-pre-rewrite`, `refs/original/`).
+* Subir `scripts/check-voice-rows.mjs` (quedo sin commitear).
+
+## 2026-06-25 — Fixes de invitacion + recuperar contrasena
+
+### Avance
+
+* Botones de copiar (link y codigo) en `/family`: nuevo Client Component `src/components/copy-field.tsx` con `navigator.clipboard`, icono que pasa de copiar a check y mensaje "Copiado". Commit `c5052e6`.
+* Flujo de recuperar contrasena (no existia): link "Olvide mi contrasena" en `/login`, `/reset` (pide el mail), `/auth/callback` (canjea el codigo por sesion) y `/reset/update` (setea la nueva). Commit `872aa2c`.
+* Bug del mail apuntando a `localhost:3000` y mensaje rojo confuso tras el signup: se resolvio apagando "Confirm email" en el dashboard de Supabase (no era codigo). Ahora `signUp` devuelve sesion al instante y no se manda mail.
+* Se ignoro `tsconfig.tsbuildinfo` (artefacto de build que generaba `tsc`).
+
+### Conceptos trabajados
+
+* Server vs Client Components: el portapapeles necesita el navegador (`onClick`, `useState`, `navigator.clipboard`), asi que vive en un archivo aparte con `"use client"`. El Server Component arma los datos y se los pasa por props.
+* `config.toml` (Supabase local) NO controla la app deployada: el proyecto hosteado se configura solo desde el dashboard web. Dos mundos distintos.
+* El whitelist de Redirect URLs aplica a TODOS los mails (confirmacion Y recovery): apagar la confirmacion no arregla el Site URL; cualquier mail que mande Supabase sigue cayendo a localhost hasta arreglar la config.
+* Flujo de reset en 3 pasos: pedir (token por mail) -> canjear (`exchangeCodeForSession`) -> setear (`updateUser`). El token de un solo uso prueba que controlas la casilla sin saber la contrasena.
+* Anti email-enumeration: el endpoint de reset responde siempre lo mismo exista o no la cuenta.
+
+### Validacion tecnica
+
+* `npx tsc --noEmit` paso en ambos cambios.
+* `npx next build` paso; aparecen las rutas `/auth/callback`, `/reset`, `/reset/update`.
+
+### Quedo flojo / para repasar
+
+* Checkpoint del Client Component sin responder (por que necesita `"use client"`, que pasa sin el `setTimeout`, quien calcula el `value`).
+* Limitacion PKCE del recovery: el link del mail debe abrirse en el MISMO navegador donde se pidio. Si molesta, migrar a `token_hash` (requiere editar template del mail).
+
+### Pendientes operativos
+
+* Dashboard Supabase: poner Site URL = `https://joaco-project.vercel.app` y Redirect URL `https://joaco-project.vercel.app/**` (sin esto el recovery manda a localhost).
+* Borrar usuario `dalubeche@gmail.com` y re-invitar para destrabar el acceso.

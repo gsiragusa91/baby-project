@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PushSetup } from "./push-setup";
 import { VoiceButton } from "./voice-button";
 
 import {
@@ -364,6 +365,10 @@ export function TodayClient({
         </div>
         <p className="mt-3 truncate text-sm text-[var(--ink-soft)]">{userEmail}</p>
       </header>
+
+      <section className="px-5 pb-1">
+        <PushSetup />
+      </section>
 
       <section className="grid grid-cols-3 gap-3 px-5">
         <Metric label="Pañales" value={summary.counts.diapers} />
