@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getFamilyContext } from "@/src/data/context";
+import { getFamilyContext, type ReadyFamilyContext } from "@/src/data/context";
 import { calculateReminderAt } from "@/src/domain/reminders";
 import {
   diaperEventInputSchema,
@@ -180,11 +180,36 @@ export async function markQuestionAnsweredAction(formData: FormData) {
 
 export async function confirmVoiceEventAction(result: VoiceParseResult) {
   const context = await requireReadyContext();
-  const { proposedEvent, transcript } = result;
 
-  if (proposedEvent.intent === "unknown" || result.intent === "unknown") {
+  if (result.proposedEvent.intent === "unknown" || result.intent === "unknown") {
     throw new Error("No se puede guardar un audio que no fue interpretado.");
   }
+
+  try {
+    await saveProposedVoiceEvent(context, result);
+    await recordVoiceParseLog(context, result, { accepted: true });
+    revalidatePath("/");
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message.trim().length > 0
+        ? error.message
+        : "Error desconocido al guardar el evento de voz.";
+    // El log es best-effort: si falla, NO debe tapar el error real del guardado.
+    await recordVoiceParseLog(context, result, { accepted: false, error: message });
+    throw error;
+  }
+}
+
+/**
+ * Persiste el evento propuesto por voz. Lanza si Supabase devuelve error o si
+ * el intent todavía no es soportado. No hace revalidatePath: de eso se encarga
+ * confirmVoiceEventAction una sola vez, en el camino feliz.
+ */
+async function saveProposedVoiceEvent(
+  context: ReadyFamilyContext,
+  result: VoiceParseResult
+) {
+  const { proposedEvent, transcript } = result;
 
   if (proposedEvent.intent === "register_diaper") {
     if (!proposedEvent.eventTimeLocal || !proposedEvent.diaperType) {
@@ -207,7 +232,6 @@ export async function confirmVoiceEventAction(result: VoiceParseResult) {
       throw new Error(error.message);
     }
 
-    revalidatePath("/");
     return;
   }
 
@@ -268,7 +292,6 @@ export async function confirmVoiceEventAction(result: VoiceParseResult) {
       }
     }
 
-    revalidatePath("/");
     return;
   }
 
@@ -290,11 +313,43 @@ export async function confirmVoiceEventAction(result: VoiceParseResult) {
       throw new Error(error.message);
     }
 
-    revalidatePath("/");
     return;
   }
 
   throw new Error("Todavía no se puede guardar este tipo de evento por voz.");
+}
+
+/**
+ * Registra el resultado de un intento de voz en `voice_parse_logs`.
+ * Best-effort: nunca lanza. Un fallo escribiendo el log no debe romper —ni
+ * tapar el error de— el guardado real. Por eso captura tanto la excepción
+ * como el `error` que devuelve Supabase, y sólo los loguea por consola.
+ */
+async function recordVoiceParseLog(
+  context: ReadyFamilyContext,
+  result: VoiceParseResult,
+  outcome: { accepted: boolean; error?: string }
+) {
+  try {
+    const { error } = await context.supabase.from("voice_parse_logs").insert({
+      baby_id: context.baby.id,
+      family_id: context.familyId,
+      user_id: context.user.id,
+      transcript: result.transcript,
+      detected_intent: result.intent,
+      confidence: result.confidence,
+      accepted: outcome.accepted,
+      discarded: false,
+      corrected: false,
+      error: outcome.error ?? null
+    });
+
+    if (error) {
+      console.error("voice_parse_logs insert devolvió error:", error.message);
+    }
+  } catch (logError) {
+    console.error("voice_parse_logs lanzó una excepción:", logError);
+  }
 }
 
 export async function signOutAction() {
