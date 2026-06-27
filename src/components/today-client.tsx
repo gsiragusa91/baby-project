@@ -60,9 +60,24 @@ async function mockVoiceParse(_blob: Blob): Promise<VoiceParseResult> {
   };
 }
 
+/** Extensión de archivo según el mimeType real del audio (OpenAI la usa para decodificar). */
+function audioFileName(blob: Blob) {
+  const type = blob.type;
+  const ext = type.includes("mp4")
+    ? "mp4"
+    : type.includes("ogg")
+      ? "ogg"
+      : type.includes("wav")
+        ? "wav"
+        : type.includes("mpeg")
+          ? "mp3"
+          : "webm";
+  return `voice.${ext}`;
+}
+
 async function postVoiceParse(blob: Blob): Promise<VoiceParseResult> {
   const formData = new FormData();
-  formData.append("audio", blob, "voice.webm");
+  formData.append("audio", blob, audioFileName(blob));
 
   const response = await fetch("/api/voice/parse", {
     method: "POST",

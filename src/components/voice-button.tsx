@@ -74,7 +74,11 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
 
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        // Usamos el mimeType REAL que eligió el navegador (Chrome→webm, Safari→mp4),
+        // no uno hardcodeado. Si no, OpenAI recibe bytes de un formato con la
+        // etiqueta de otro y los rechaza como "corrupted or unsupported".
+        const mimeType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setState("processing");
         try {
           const parsed = await onSubmitAudio(blob);
