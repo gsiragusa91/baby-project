@@ -3,17 +3,23 @@
 import { Bell, BellRing } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { getMicStream } from "@/src/lib/mic";
+
 /**
- * Activa las notificaciones push en ESTE dispositivo.
+ * Activa, en un solo gesto, los permisos del dispositivo: notificaciones (push)
+ * Y micrófono (registro por voz).
  *
- * Flujo del usuario (botón → permiso → suscripción):
- *   1. Registramos el service worker (/sw.js).
- *   2. Pedimos permiso de notificaciones (tiene que salir de un gesto del usuario,
- *      por eso va en un onClick, no en el useEffect).
- *   3. Nos suscribimos al push con la clave pública VAPID.
- *   4. Mandamos la suscripción al backend para guardarla.
+ * Flujo del botón "Activar":
+ *   1. Pedimos el micrófono primero (getUserMedia) — así no perdemos el "user
+ *      gesture" después de los awaits siguientes, que en iOS lo invalidan.
+ *   2. Registramos el service worker y pedimos permiso de notificaciones.
+ *   3. Si lo permite, nos suscribimos al push y guardamos la suscripción.
  *
- * En iPhone esto SOLO funciona si la app está instalada en la pantalla de inicio.
+ * Guardamos un flag en localStorage ("perms-activated") porque el estado del
+ * permiso de mic no es consultable de forma confiable en iOS; así sabemos si ya
+ * pasó por el flujo y no mostramos la tarjeta de más.
+ *
+ * En iPhone esto SOLO funciona con la app instalada en la pantalla de inicio.
  */
 
 type UIState = "loading" | "unsupported" | "ready" | "enabled" | "denied" | "error";
@@ -55,7 +61,12 @@ export function PushSetup() {
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setState(sub ? "enabled" : "ready"))
+      .then((sub) => {
+        // "enabled" (tarjeta oculta) solo si ya hay push Y ya pasó por el flujo
+        // de permisos (que incluye el mic). Si no, mostramos "Activar".
+        const activated = localStorage.getItem("perms-activated") === "1";
+        setState(sub && activated ? "enabled" : "ready");
+      })
       .catch(() => setState("ready"));
   }, []);
 
@@ -66,35 +77,40 @@ export function PushSetup() {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) throw new Error("Falta la clave pública VAPID (env).");
 
-      // 1. Service worker.
-      const reg = await navigator.serviceWorker.register("/sw.js");
-
-      // 2. Permiso (gesto del usuario).
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState(permission === "denied" ? "denied" : "ready");
-        return;
+      // 1. Micrófono PRIMERO: getUserMedia exige user-gesture y los awaits que
+      //    siguen (registro SW, requestPermission) lo invalidan en iOS. Si el
+      //    usuario lo deniega no es fatal para los avisos.
+      try {
+        await getMicStream();
+      } catch {
+        // mic denegado/no disponible — seguimos con los avisos igual.
       }
 
-      // 3. Suscripción al push.
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        // cast a BufferSource: el tipo genérico de Uint8Array no encaja directo
-        // con la firma de applicationServerKey en algunas versiones de lib.dom.
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
-      });
+      // 2. Service worker + permiso de notificaciones.
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const permission = await Notification.requestPermission();
 
-      // 4. Guardar en el backend.
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub.toJSON())
-      });
-      if (!res.ok) throw new Error("No pude guardar la suscripción en el servidor.");
+      // 3. Si permitió notificaciones, suscribimos al push y lo guardamos.
+      if (permission === "granted") {
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          // cast a BufferSource: el tipo genérico de Uint8Array no encaja directo
+          // con la firma de applicationServerKey en algunas versiones de lib.dom.
+          applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
+        });
+        const res = await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sub.toJSON())
+        });
+        if (!res.ok) throw new Error("No pude guardar la suscripción en el servidor.");
+      }
 
-      setState("enabled");
+      // Pasó por el flujo de permisos (haya o no aceptado notis).
+      localStorage.setItem("perms-activated", "1");
+      setState(permission === "denied" ? "denied" : "enabled");
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "Error activando avisos.");
+      setErrorMsg(error instanceof Error ? error.message : "Error activando permisos.");
       setState("error");
     }
   }
@@ -122,9 +138,9 @@ export function PushSetup() {
           )}
           {(state === "ready" || state === "error") && (
             <>
-              <p className="text-sm font-bold">Activar avisos en este dispositivo</p>
+              <p className="text-sm font-bold">Activar avisos y micrófono</p>
               <p className="text-xs text-[var(--ink-soft)]">
-                Te avisamos cuando sea hora de la próxima toma.
+                Permití notificaciones (recordatorios) y micrófono (registro por voz). Se piden una sola vez.
               </p>
               {state === "error" && (
                 <p className="mt-1 text-xs font-semibold text-[var(--danger)]">{errorMsg}</p>

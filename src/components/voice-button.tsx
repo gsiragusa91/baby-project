@@ -4,6 +4,7 @@ import { Mic, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { VoiceParseResult } from "@/src/domain/voice.ts";
+import { getMicStream, setMicCapturing } from "@/src/lib/mic";
 import { VoiceConfirmationCard } from "./voice-confirmation-card";
 
 type VoiceState = "idle" | "recording" | "processing" | "saving" | "result" | "error";
@@ -64,7 +65,9 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
 
   async function startRecording() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Reusamos el stream del mic (no re-pide permiso en cada grabación).
+      const stream = await getMicStream();
+      setMicCapturing(true); // habilitamos la captura solo mientras grabamos
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
 
@@ -73,7 +76,8 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
       };
 
       recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        // NO soltamos el stream: lo muteamos para conservar el permiso y reusarlo.
+        setMicCapturing(false);
         // Usamos el mimeType REAL que eligió el navegador (Chrome→webm, Safari→mp4),
         // no uno hardcodeado. Si no, OpenAI recibe bytes de un formato con la
         // etiqueta de otro y los rechaza como "corrupted or unsupported".

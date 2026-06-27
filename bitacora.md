@@ -1,5 +1,11 @@
 # Bitacora
 
+## 2026-06-27 — M0: permisos combinados (avisos + mic) y reuso de stream
+* El botón "Activar" ahora pide en un mismo gesto **notificaciones + micrófono** (mic primero, para no perder el user-gesture tras los awaits).
+* `src/lib/mic.ts`: singleton que **reusa** el stream del mic y lo mutea entre grabaciones (`track.enabled`), en vez de soltarlo. Evita el re-prompt en cada grabación dentro de una sesión.
+* Flag `localStorage("perms-activated")` para no depender de consultar el estado del permiso de mic (poco confiable en iOS).
+* Honesto: la persistencia ENTRE aperturas depende del SO (PWA instalada en iOS la recuerda mejor que Safari); el código solo evita re-pedir dentro de la sesión.
+
 ## 2026-06-27 — Alarmas que suenan: PWA + Web Push + Alexa (v0 opción B)
 
 ### Avance
