@@ -49,7 +49,11 @@ export function PushSetup() {
       return;
     }
 
-    navigator.serviceWorker.ready
+    // Registramos el SW acá (no solo en el botón). Si usáramos
+    // navigator.serviceWorker.ready, se quedaría esperando para siempre a un SW
+    // que todavía no existe → el botón nunca aparecería (deadlock).
+    navigator.serviceWorker
+      .register("/sw.js")
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => setState(sub ? "enabled" : "ready"))
       .catch(() => setState("ready"));
