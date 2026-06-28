@@ -1,0 +1,26 @@
+src/components/today-client.tsx
+  s_1082b937d93a48::t_16191acb0f5c95 506
+  s_1082b937d93a48::t_6db9a248f113f5 260-261,266,270-276
+  s_1082b937d93a48::t_62dc2c87d383e1 692-696,698,711-712
+  s_1082b937d93a48::t_2d3ff455ef57d5 328-329,334,344-350
+  s_1082b937d93a48::t_ee9e2ec69d372e 743-748
+  s_1082b937d93a48::t_47f863c8f7323f 500-501,530,533,536-549
+  s_1082b937d93a48::t_27d00259665b1e 597-608
+  s_1082b937d93a48::t_593b9ad9307ce6 439-440,444,447-453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1842f9f1e1b983c71430ff81e82a59b1c2cd788c",
+  "prompts": {},
+  "sessions": {
+    "s_1082b937d93a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cebf3933-8146-4dbd-b8a1-c3a821207c3b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
