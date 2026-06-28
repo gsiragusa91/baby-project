@@ -10,6 +10,11 @@ import { VoiceConfirmationCard } from "./voice-confirmation-card";
 
 type VoiceState = "idle" | "recording" | "processing" | "saving" | "result" | "error";
 
+/** Tope de grabación. Un audio corto alcanza para un evento y evita gastar
+ *  tokens de más en la transcripción (OpenAI cobra por duración). Al llegar
+ *  al límite, la grabación se corta sola y sigue el flujo normal de parseo. */
+const MAX_RECORDING_SECONDS = 15;
+
 type Props = {
   /**
    * Llamado con el blob de audio cuando el usuario termina de grabar.
@@ -45,6 +50,18 @@ function RecordingTimer({ startedAt }: { startedAt: number }) {
     return () => clearInterval(id);
   }, [startedAt]);
 
+  const remaining = Math.max(0, MAX_RECORDING_SECONDS - elapsed);
+  // En los últimos 5s avisamos que se viene el corte: contador en rojo.
+  const isEnding = remaining <= 5;
+
+  if (isEnding) {
+    return (
+      <span className="text-xs font-bold tabular-nums text-[var(--danger)]">
+        Corta en {remaining}s
+      </span>
+    );
+  }
+
   const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const ss = String(elapsed % 60).padStart(2, "0");
 
@@ -62,6 +79,8 @@ export function VoiceButton({ onSubmitAudio, onConfirm, onEdit }: Props) {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  // Timer que corta la grabación al llegar a MAX_RECORDING_SECONDS.
+  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function readableError(error: unknown, fallback: string) {
     return error instanceof Error && error.message.trim().length > 0
@@ -115,6 +134,9 @@ export function VoiceButton({ onSubmitAudio, onConfirm, onEdit }: Props) {
       mediaRecorderRef.current = recorder;
       setRecordingStart(Date.now());
       setState("recording");
+      // Corte automático al tope: dispara stopRecording, que sigue el flujo
+      // normal (onstop → procesar). clearTimeout en stop evita doble corte.
+      autoStopRef.current = setTimeout(stopRecording, MAX_RECORDING_SECONDS * 1000);
     } catch {
       const info = voiceErrorInfo("mic_permission");
       setErrorMsg(info.hint ? `${info.message} ${info.hint}` : info.message);
@@ -123,6 +145,10 @@ export function VoiceButton({ onSubmitAudio, onConfirm, onEdit }: Props) {
   }
 
   function stopRecording() {
+    if (autoStopRef.current) {
+      clearTimeout(autoStopRef.current);
+      autoStopRef.current = null;
+    }
     mediaRecorderRef.current?.stop();
     mediaRecorderRef.current = null;
   }

@@ -76,6 +76,11 @@ textarea {
   width: min(100vw, 430px);
   min-height: 100svh;
   margin: 0 auto;
+  /* El notch/isla del teléfono se come la parte de arriba: respetamos el
+     área segura del SO (requiere viewportFit: "cover", ya seteado en layout).
+     env() devuelve 0 donde no hay notch, así que es seguro en todos lados. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
   background:
     radial-gradient(120% 55% at 50% 0%, rgba(255, 150, 194, 0.07), transparent 60%),
     var(--background);
