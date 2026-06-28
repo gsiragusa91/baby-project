@@ -1,0 +1,20 @@
+src/components/baby-screen.tsx
+  s_7fb50222a01912::t_f476dbe6d5533d 144,150,161
+  s_7fb50222a01912::t_56e8d11f049193 130,132,136,142,145-149,151-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "30de9db029e1cdd2278ddf9d2b97269e3b93fd8c",
+  "prompts": {},
+  "sessions": {
+    "s_7fb50222a01912": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2db9e173-c6e1-4cb7-8c23-50edafd5386e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
