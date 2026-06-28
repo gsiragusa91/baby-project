@@ -1,0 +1,25 @@
+app/globals.css
+  s_437182f86d67b9::t_81528e258fed27 79-83
+src/components/voice-button.tsx
+  s_437182f86d67b9::t_32a4368daaf442 53-64
+  s_437182f86d67b9::t_2cb60e44e47616 148-151
+  s_437182f86d67b9::t_7cacc2d97d5b99 13-17
+  s_437182f86d67b9::t_976654127a9154 82-83
+  s_437182f86d67b9::t_19a30a1b447e2a 137-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "6b01c99518b209149c196f23141394014af10844",
+  "prompts": {},
+  "sessions": {
+    "s_437182f86d67b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c44921a-ab8d-442e-93c3-4bc1e0d7bf94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
