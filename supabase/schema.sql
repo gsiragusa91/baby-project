@@ -104,6 +104,7 @@ create table if not exists public.questions (
   status text not null check (status in ('pending', 'answered')),
   priority text not null check (priority in ('normal', 'next_visit', 'urgent')),
   answer text,
+  photo_url text,
   source text not null check (source in ('manual', 'voice')),
   transcript text
 );
@@ -496,3 +497,91 @@ drop policy if exists "Members can insert voice parse logs" on public.voice_pars
 create policy "Members can insert voice parse logs"
 on public.voice_parse_logs for insert
 with check (public.is_family_member(family_id) and user_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- Storage: bucket privado de fotos (pañal, duda, álbum). Path:
+--   families/{familyId}/{kind}/{uuid}.{ext}
+-- Autorización por membresía de familia leyendo el familyId del path.
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public)
+values ('baby-media', 'baby-media', false)
+on conflict (id) do nothing;
+
+drop policy if exists "Family members read baby-media" on storage.objects;
+create policy "Family members read baby-media"
+on storage.objects for select
+to authenticated
+using (
+  bucket_id = 'baby-media'
+  and public.is_family_member((storage.foldername(name))[2]::uuid)
+);
+
+drop policy if exists "Family members insert baby-media" on storage.objects;
+create policy "Family members insert baby-media"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'baby-media'
+  and public.is_family_member((storage.foldername(name))[2]::uuid)
+);
+
+drop policy if exists "Family members update baby-media" on storage.objects;
+create policy "Family members update baby-media"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'baby-media'
+  and public.is_family_member((storage.foldername(name))[2]::uuid)
+);
+
+drop policy if exists "Family members delete baby-media" on storage.objects;
+create policy "Family members delete baby-media"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'baby-media'
+  and public.is_family_member((storage.foldername(name))[2]::uuid)
+);
+
+-- ---------------------------------------------------------------------------
+-- Álbum del bebé (Fase 4): fotos con fecha para agrupar por semana.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.baby_photos (
+  id uuid primary key default gen_random_uuid(),
+  baby_id uuid not null references public.babies(id) on delete cascade,
+  family_id uuid not null references public.families(id) on delete cascade,
+  created_by_user_id uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  taken_at timestamptz not null default now(),
+  photo_url text not null,
+  note text,
+  source text not null default 'manual' check (source in ('manual', 'voice'))
+);
+
+create index if not exists baby_photos_baby_taken_idx
+  on public.baby_photos(baby_id, taken_at desc);
+
+alter table public.baby_photos enable row level security;
+
+drop policy if exists "Members can read baby photos" on public.baby_photos;
+create policy "Members can read baby photos"
+on public.baby_photos for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "Members can insert baby photos" on public.baby_photos;
+create policy "Members can insert baby photos"
+on public.baby_photos for insert
+with check (public.is_family_member(family_id) and created_by_user_id = auth.uid());
+
+drop policy if exists "Members can update baby photos" on public.baby_photos;
+create policy "Members can update baby photos"
+on public.baby_photos for update
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "Members can delete baby photos" on public.baby_photos;
+create policy "Members can delete baby photos"
+on public.baby_photos for delete
+using (public.is_family_member(family_id));

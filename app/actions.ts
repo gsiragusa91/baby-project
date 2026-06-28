@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { getFamilyContext, type ReadyFamilyContext } from "@/src/data/context";
 import { DEFAULT_FEEDING_REMINDER, calculateReminderAt } from "@/src/domain/reminders";
 import {
+  babyEditSchema,
+  babyPhotoInputSchema,
   deleteByIdSchema,
   diaperEventEditSchema,
   diaperEventInputSchema,
@@ -18,6 +20,7 @@ import { argentinaLocalInputToIso } from "@/src/domain/time";
 import type { ReminderOption } from "@/src/domain/types";
 import type { VoiceParseResult } from "@/src/domain/voice";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { MEDIA_BUCKET, uploadPhoto, type MediaKind } from "@/src/lib/supabase/storage";
 
 async function requireReadyContext() {
   const context = await getFamilyContext();
@@ -31,6 +34,28 @@ async function requireReadyContext() {
   }
 
   return context;
+}
+
+/**
+ * Resuelve qué hacer con la foto a partir del FormData:
+ *  - File nuevo (con peso) → lo sube y devuelve el path.
+ *  - removePhoto=on → null (quitar).
+ *  - nada → undefined (no tocar la columna).
+ * El form ya comprimió la imagen antes de mandarla (preparePhotoFormData).
+ */
+async function resolvePhoto(
+  context: ReadyFamilyContext,
+  kind: MediaKind,
+  formData: FormData
+): Promise<string | null | undefined> {
+  const photo = formData.get("photo");
+  if (photo instanceof File && photo.size > 0) {
+    return uploadPhoto(context, kind, photo);
+  }
+  if (formData.get("removePhoto") === "on") {
+    return null;
+  }
+  return undefined;
 }
 
 function optionalText(value: unknown) {
@@ -117,6 +142,8 @@ export async function createDiaperAction(formData: FormData) {
     abnormalFlag: formData.get("abnormalFlag") === "on"
   });
 
+  const photoUrl = await resolvePhoto(context, "diaper", formData);
+
   const { error } = await context.supabase.from("diaper_events").insert({
     baby_id: context.baby.id,
     family_id: context.familyId,
@@ -124,6 +151,7 @@ export async function createDiaperAction(formData: FormData) {
     event_time: argentinaLocalInputToIso(parsed.eventTime),
     diaper_type: parsed.diaperType,
     comment: parsed.comment ?? null,
+    photo_url: photoUrl ?? null,
     abnormal_flag: parsed.abnormalFlag,
     source: "manual"
   });
@@ -132,7 +160,7 @@ export async function createDiaperAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function createFeedingAction(formData: FormData) {
@@ -180,7 +208,7 @@ export async function createFeedingAction(formData: FormData) {
     await syncFeedingReminder(context, savedFeeding.id, reminderAtIso);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function createQuestionAction(formData: FormData) {
@@ -192,6 +220,8 @@ export async function createQuestionAction(formData: FormData) {
     priority: formData.get("priority") ?? "normal"
   });
 
+  const photoUrl = await resolvePhoto(context, "question", formData);
+
   const { error } = await context.supabase.from("questions").insert({
     baby_id: context.baby.id,
     family_id: context.familyId,
@@ -200,6 +230,7 @@ export async function createQuestionAction(formData: FormData) {
     category: parsed.category,
     professional: parsed.professional,
     priority: parsed.priority,
+    photo_url: photoUrl ?? null,
     status: "pending",
     source: "manual"
   });
@@ -208,7 +239,7 @@ export async function createQuestionAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function markQuestionAnsweredAction(formData: FormData) {
@@ -230,7 +261,7 @@ export async function markQuestionAnsweredAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 // ---------------------------------------------------------------------------
@@ -249,13 +280,17 @@ export async function updateDiaperAction(formData: FormData) {
     abnormalFlag: formData.get("abnormalFlag") === "on"
   });
 
+  const photoUrl = await resolvePhoto(context, "diaper", formData);
+
   const { error } = await context.supabase
     .from("diaper_events")
     .update({
       event_time: argentinaLocalInputToIso(parsed.eventTime),
       diaper_type: parsed.diaperType,
       comment: parsed.comment ?? null,
-      abnormal_flag: parsed.abnormalFlag
+      abnormal_flag: parsed.abnormalFlag,
+      // Solo tocamos la foto si cambió (path nuevo o null para quitar).
+      ...(photoUrl !== undefined ? { photo_url: photoUrl } : {})
     })
     .eq("id", parsed.id)
     .eq("family_id", context.familyId)
@@ -265,7 +300,7 @@ export async function updateDiaperAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteDiaperAction(formData: FormData) {
@@ -283,7 +318,7 @@ export async function deleteDiaperAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function updateFeedingAction(formData: FormData) {
@@ -326,7 +361,7 @@ export async function updateFeedingAction(formData: FormData) {
   // Reflejamos el cambio en la alarma programada de esta toma.
   await syncFeedingReminder(context, parsed.id, reminderAtIso);
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteFeedingAction(formData: FormData) {
@@ -347,7 +382,7 @@ export async function deleteFeedingAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function updateQuestionAction(formData: FormData) {
@@ -360,13 +395,16 @@ export async function updateQuestionAction(formData: FormData) {
     priority: formData.get("priority") ?? "normal"
   });
 
+  const photoUrl = await resolvePhoto(context, "question", formData);
+
   const { error } = await context.supabase
     .from("questions")
     .update({
       text: parsed.text,
       category: parsed.category,
       professional: parsed.professional,
-      priority: parsed.priority
+      priority: parsed.priority,
+      ...(photoUrl !== undefined ? { photo_url: photoUrl } : {})
     })
     .eq("id", parsed.id)
     .eq("family_id", context.familyId)
@@ -376,7 +414,7 @@ export async function updateQuestionAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteQuestionAction(formData: FormData) {
@@ -394,7 +432,94 @@ export async function deleteQuestionAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
+}
+
+// ---------------------------------------------------------------------------
+// Álbum del bebé (Fase 4).
+// ---------------------------------------------------------------------------
+
+export async function createBabyPhotoAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const parsed = babyPhotoInputSchema.parse({
+    takenAt: formData.get("takenAt"),
+    note: optionalText(formData.get("note")) ?? undefined
+  });
+
+  const photo = formData.get("photo");
+  if (!(photo instanceof File) || photo.size === 0) {
+    throw new Error("Hace falta una foto para agregar al álbum.");
+  }
+  const photoUrl = await uploadPhoto(context, "album", photo);
+
+  const { error } = await context.supabase.from("baby_photos").insert({
+    baby_id: context.baby.id,
+    family_id: context.familyId,
+    created_by_user_id: context.user.id,
+    taken_at: parsed.takenAt ? argentinaLocalInputToIso(parsed.takenAt) : new Date().toISOString(),
+    photo_url: photoUrl,
+    note: parsed.note ?? null,
+    source: "manual"
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/", "layout");
+}
+
+export async function deleteBabyPhotoAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const { id } = deleteByIdSchema.parse({ id: formData.get("id") });
+
+  // Buscamos el path para borrar también el objeto de Storage (evitar huérfanos).
+  const { data: row } = await context.supabase
+    .from("baby_photos")
+    .select("photo_url")
+    .eq("id", id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id)
+    .maybeSingle();
+
+  const { error } = await context.supabase
+    .from("baby_photos")
+    .delete()
+    .eq("id", id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const photoPath = (row as { photo_url: string } | null)?.photo_url;
+  if (photoPath) {
+    // Best-effort: si falla el borrado del objeto, el registro ya no existe.
+    await context.supabase.storage.from(MEDIA_BUCKET).remove([photoPath]);
+  }
+
+  revalidatePath("/", "layout");
+}
+
+export async function updateBabyAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const parsed = babyEditSchema.parse({
+    name: formData.get("name"),
+    birthDate: formData.get("birthDate")
+  });
+
+  const { error } = await context.supabase
+    .from("babies")
+    .update({ name: parsed.name, birth_date: parsed.birthDate })
+    .eq("id", context.baby.id)
+    .eq("family_id", context.familyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/", "layout");
 }
 
 export async function confirmVoiceEventAction(result: VoiceParseResult) {
@@ -407,7 +532,7 @@ export async function confirmVoiceEventAction(result: VoiceParseResult) {
   try {
     await saveProposedVoiceEvent(context, result);
     await recordVoiceParseLog(context, result, { accepted: true });
-    revalidatePath("/");
+    revalidatePath("/", "layout");
   } catch (error) {
     const message =
       error instanceof Error && error.message.trim().length > 0

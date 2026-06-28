@@ -1,5 +1,37 @@
 # Bitacora
 
+## 2026-06-28 — V1 Fases 3 y 4: Storage + fotos + álbum del bebé (modo ship)
+
+### Qué se construyó
+
+**Fase 3 — Supabase Storage + fotos en pañal y duda.**
+* Migración `20260628140000`: bucket **privado** `baby-media` + 4 policies sobre `storage.objects` (read/insert/update/delete) gateadas por membresía de familia, leyendo el `familyId` del path con `(storage.foldername(name))[2]::uuid` + `is_family_member`. Path de cada objeto: `families/{familyId}/{kind}/{uuid}.{ext}`. Misma migración agrega `questions.photo_url` (pañal ya tenía).
+* `src/lib/supabase/storage.ts`: `uploadPhoto` (sube con el cliente server/RLS, nombre por UUID random) y `signedUrlsFor` (signed URLs en batch, una sola llamada).
+* `src/lib/image.ts`: `downscaleImage` (canvas → JPEG ~1600px) + `preparePhotoFormData`. Las fotos se comprimen en el browser ANTES de subir (3-8MB → ~200-400KB).
+* `src/components/forms/photo-field.tsx`: input de foto reusable con preview, reemplazar y quitar. Wired en `diaper-form` y `question-form`.
+* Actions (`app/actions.ts`): helper `resolvePhoto` (sube foto nueva / quita / no toca) aplicado a las 4 actions de pañal y duda. Se persiste el **path**; las screens renderizan vía **signed URL** resuelta en `getTodaySummary`.
+
+**Fase 4 — Sección "Tu bebé" / álbum semana a semana.**
+* Migración `20260628150000`: tabla `baby_photos` (`taken_at`, `photo_url`, `note`, ...) + RLS por `is_family_member` + índice `(baby_id, taken_at desc)`.
+* `src/data/album.ts`: `getBabyAlbum` — fotos con signed URL + cálculo de la semana de vida en cada `taken_at` desde `birth_date`.
+* Actions: `createBabyPhotoAction`, `deleteBabyPhotoAction` (borra también el objeto de Storage), `updateBabyAction` (editar nombre/fecha de nac.).
+* `baby-screen.tsx`: dejó de ser placeholder → info + editar bebé + agregar foto + grilla agrupada por "Semana N" + visor con borrado.
+
+### Decisiones técnicas (no estaban en el plan)
+* **Compresión client-side**: los Server Actions de Next tienen límite de body de 1MB; una foto de celular no entra. Se redimensiona en el browser; `next.config.mjs` sube el límite a 4MB como red de seguridad.
+* **Nombre de archivo por UUID** (no por id de fila): desacopla el upload del insert; sirve igual para alta y edición.
+
+### Validación técnica
+* `npx tsc --noEmit` ✓ · `npm run lint` ✓ · `npm run build` ✓ (ambas fases).
+
+### Pendiente (lo corre Guido)
+* **Orden crítico**: aplicar migraciones ANTES de pushear el código a `main`. El alta de dudas (inserta `photo_url`) y `/bebe` (consulta `baby_photos`) se rompen si el código llega a prod sin las tablas/columnas.
+  * `npx supabase db push` (aplica `20260628140000` + `20260628150000`).
+* Probar en vivo: subir foto en pañal/duda y verla vía signed URL; subir al álbum y ver labels de semana; editar fecha de nac.
+* **Fase 1 (navegación por tabs) sigue sin commitear** — verde y deployable, pero falta el commit/push.
+* Orphan cleanup: al reemplazar una foto de pañal/duda el objeto viejo queda huérfano en Storage (aceptable en V1).
+
+
 ## 2026-06-27 — M0: permisos combinados (avisos + mic) y reuso de stream
 * El botón "Activar" ahora pide en un mismo gesto **notificaciones + micrófono** (mic primero, para no perder el user-gesture tras los awaits).
 * `src/lib/mic.ts`: singleton que **reusa** el stream del mic y lo mutea entre grabaciones (`track.enabled`), en vez de soltarlo. Evita el re-prompt en cada grabación dentro de una sesión.

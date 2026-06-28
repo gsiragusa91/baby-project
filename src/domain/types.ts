@@ -49,7 +49,10 @@ export type DiaperEvent = {
   eventTime: string;
   diaperType: DiaperType;
   comment?: string | null;
+  /** Path del objeto en Storage (lo que se persiste en DB). */
   photoUrl?: string | null;
+  /** Signed URL resuelta en la capa de datos para render (transitorio). */
+  photoSignedUrl?: string | null;
   abnormalFlag: boolean;
   source: EventSource;
   transcript?: string | null;
@@ -105,8 +108,35 @@ export type Question = {
   status: QuestionStatus;
   priority: QuestionPriority;
   answer?: string | null;
+  /** Path del objeto en Storage (lo que se persiste en DB). */
+  photoUrl?: string | null;
+  /** Signed URL resuelta en la capa de datos para render (transitorio). */
+  photoSignedUrl?: string | null;
   source: EventSource;
   transcript?: string | null;
+};
+
+export type BabyPhoto = {
+  id: string;
+  babyId: string;
+  familyId: string;
+  createdByUserId: string;
+  createdAt: string;
+  takenAt: string;
+  /** Path del objeto en Storage. */
+  photoUrl: string;
+  note?: string | null;
+  source: EventSource;
+};
+
+/** Foto del álbum con su signed URL y la edad del bebé en esa fecha (para agrupar). */
+export type AlbumPhoto = {
+  id: string;
+  takenAt: string;
+  note?: string | null;
+  signedUrl: string | null;
+  /** Semana de vida del bebé en la fecha de la foto (0 = primera semana). */
+  weekIndex: number;
 };
 
 export type Reminder = {

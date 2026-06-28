@@ -9,6 +9,8 @@ import type {
   TodaySummary
 } from "@/src/domain/types";
 
+import { signedUrlsFor } from "@/src/lib/supabase/storage";
+
 import type { ReadyFamilyContext } from "./context";
 
 type DiaperRow = {
@@ -57,6 +59,7 @@ type QuestionRow = {
   status: Question["status"];
   priority: Question["priority"];
   answer: string | null;
+  photo_url: string | null;
   source: Question["source"];
   transcript: string | null;
 };
@@ -125,6 +128,7 @@ function mapQuestion(row: QuestionRow): Question {
     status: row.status,
     priority: row.priority,
     answer: row.answer,
+    photoUrl: row.photo_url,
     source: row.source,
     transcript: row.transcript
   };
@@ -226,6 +230,18 @@ export async function getTodaySummary(context: ReadyFamilyContext): Promise<Toda
   const feedings = (feedingsResult.data ?? []).map((row) => mapFeeding(row as FeedingRow));
   const pendingQuestions = (questionsResult.data ?? []).map((row) => mapQuestion(row as QuestionRow));
   const reminders = (remindersResult.data ?? []).map((row) => mapReminder(row as ReminderRow));
+
+  // Una sola llamada a Storage para todas las fotos del día (pañales + dudas).
+  const signedUrls = await signedUrlsFor(context, [
+    ...diapers.map((d) => d.photoUrl),
+    ...pendingQuestions.map((q) => q.photoUrl)
+  ]);
+  for (const diaper of diapers) {
+    diaper.photoSignedUrl = diaper.photoUrl ? signedUrls.get(diaper.photoUrl) ?? null : null;
+  }
+  for (const question of pendingQuestions) {
+    question.photoSignedUrl = question.photoUrl ? signedUrls.get(question.photoUrl) ?? null : null;
+  }
 
   return {
     baby,

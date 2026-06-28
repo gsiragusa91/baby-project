@@ -1,4 +1,5 @@
-import { TodayClient } from "@/src/components/today-client";
+import { AppShell } from "@/src/components/app-shell";
+import { InicioScreen } from "@/src/components/inicio-screen";
 import type { TodaySummary } from "@/src/domain/types";
 
 /**
@@ -126,10 +127,8 @@ const mockSummary: TodaySummary = {
 
 export default function PreviewPage() {
   return (
-    <TodayClient
-      summary={mockSummary}
-      userEmail="preview@babys.app"
-      voiceParser="mock"
-    />
+    <AppShell babyName={mockSummary.baby.name} email="preview@babys.app" voiceParser="mock">
+      <InicioScreen summary={mockSummary} />
+    </AppShell>
   );
 }

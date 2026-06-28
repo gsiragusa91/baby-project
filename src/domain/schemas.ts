@@ -106,3 +106,21 @@ export const questionInputSchema = z.object({
 export const questionEditSchema = questionInputSchema.extend({
   id: idSchema
 });
+
+export const babyPhotoInputSchema = z.object({
+  // Fecha de la foto (datetime-local). Opcional: si falta, el server usa "ahora".
+  takenAt: optionalLocalDateTime,
+  note: z.string().trim().max(500).optional()
+});
+
+export const babyEditSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  birthDate: isoDateSchema.refine((value) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+    return !Number.isNaN(date.getTime()) && date <= today;
+  })
+});
