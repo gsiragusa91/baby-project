@@ -35,11 +35,20 @@ export const joinFamilyInputSchema = z.object({
     .transform((value) => value.replace(/\s+/g, "").toUpperCase())
 });
 
+const idSchema = z.string().uuid();
+
+/** Para borrar cualquier registro: solo necesitamos su id. */
+export const deleteByIdSchema = z.object({ id: idSchema });
+
 export const diaperEventInputSchema = z.object({
   diaperType: z.enum(["pee", "poop", "pee_poop", "dry"]),
   eventTime: z.string().min(1),
   comment: z.string().max(500).optional(),
   abnormalFlag: z.boolean().default(false)
+});
+
+export const diaperEventEditSchema = diaperEventInputSchema.extend({
+  id: idSchema
 });
 
 const optionalMinutes = z.preprocess((value) => {
@@ -49,6 +58,13 @@ const optionalMinutes = z.preprocess((value) => {
   return Number(value);
 }, z.number().int().min(0).max(240).optional());
 
+const optionalLocalDateTime = z.preprocess((value) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+  return value;
+}, z.string().optional());
+
 export const feedingEventInputSchema = z.object({
   startedAt: z.string().min(1),
   leftBreastUsed: z.boolean().default(false),
@@ -56,7 +72,14 @@ export const feedingEventInputSchema = z.object({
   leftBreastMinutes: optionalMinutes,
   rightBreastMinutes: optionalMinutes,
   notes: z.string().max(500).optional(),
-  reminderOption: z.enum(["2h", "2h30", "3h", "none"]).default("2h30")
+  reminderOption: z.enum(["2h", "2h30", "3h", "none", "custom"]).default("2h30"),
+  // Hora exacta de la alarma (datetime-local). Si viene, manda sobre el preset
+  // y el evento se guarda con reminder_option = 'custom'.
+  customReminderAt: optionalLocalDateTime
+});
+
+export const feedingEventEditSchema = feedingEventInputSchema.extend({
+  id: idSchema
 });
 
 export const questionInputSchema = z.object({
@@ -78,4 +101,8 @@ export const questionInputSchema = z.object({
     "other"
   ]),
   priority: z.enum(["normal", "next_visit", "urgent"])
+});
+
+export const questionEditSchema = questionInputSchema.extend({
+  id: idSchema
 });

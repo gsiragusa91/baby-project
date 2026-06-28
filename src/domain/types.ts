@@ -1,4 +1,4 @@
-export type ReminderOption = "2h" | "2h30" | "3h" | "none";
+export type ReminderOption = "2h" | "2h30" | "3h" | "none" | "custom";
 export type EventSource = "manual" | "voice";
 
 export type Family = {
@@ -143,4 +143,8 @@ export type TodaySummary = {
   nextReminder?: Reminder;
   pendingQuestions: Question[];
   timeline: TimelineItem[];
+  // Registros completos del día, para poder pre-cargar los forms de edición
+  // desde el timeline (que solo guarda un resumen recortado por item).
+  diapers: DiaperEvent[];
+  feedings: FeedingEvent[];
 };

@@ -32,6 +32,9 @@ export type ProposedFeedingEvent = {
   notes?: string;
   reminderOption?: ReminderOption;
   reminderAtLocal?: string;
+  /** Minutos relativos que dijo el usuario para la alarma ("en 5 minutos" -> 5).
+   *  Lo extrae el LLM en crudo; la hora absoluta la calcula el servidor. */
+  reminderRelativeMinutes?: number;
 };
 
 export type ProposedQuestion = {
@@ -138,7 +141,8 @@ export const VOICE_EXTRACTION_JSON_SCHEMA = {
             "rightBreastMinutes",
             "notes",
             "reminderOption",
-            "reminderAtLocal"
+            "reminderAtLocal",
+            "reminderRelativeMinutes"
           ],
           properties: {
             intent: { type: "string", const: "register_feeding" },
@@ -159,9 +163,14 @@ export const VOICE_EXTRACTION_JSON_SCHEMA = {
             notes: { type: ["string", "null"] },
             reminderOption: {
               type: ["string", "null"],
-              enum: ["2h", "2h30", "3h", "none", null]
+              enum: ["2h", "2h30", "3h", "none", "custom", null]
             },
-            reminderAtLocal: { type: ["string", "null"] }
+            reminderAtLocal: { type: ["string", "null"] },
+            reminderRelativeMinutes: {
+              type: ["integer", "null"],
+              minimum: 1,
+              maximum: 1440
+            }
           }
         },
         {
@@ -214,7 +223,7 @@ export const VOICE_EXTRACTION_JSON_SCHEMA = {
             intent: { type: "string", const: "set_reminder" },
             reminderOption: {
               type: ["string", "null"],
-              enum: ["2h", "2h30", "3h", "none", null]
+              enum: ["2h", "2h30", "3h", "none", "custom", null]
             },
             remindAtLocal: { type: ["string", "null"] },
             relatedEventType: {

@@ -17,7 +17,8 @@ export const REMINDER_LABELS: Record<ReminderOption, string> = {
   "2h": "2 h",
   "2h30": "2 h 30",
   "3h": "3 h",
-  none: "Sin alarma"
+  none: "Sin alarma",
+  custom: "Hora exacta"
 };
 
 export const CATEGORY_LABELS: Record<QuestionCategory, string> = {

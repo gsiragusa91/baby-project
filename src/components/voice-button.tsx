@@ -4,6 +4,7 @@ import { Mic, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { VoiceParseResult } from "@/src/domain/voice.ts";
+import { voiceErrorInfo } from "@/src/domain/voice-errors";
 import { getMicStream, setMicCapturing } from "@/src/lib/mic";
 import { VoiceConfirmationCard } from "./voice-confirmation-card";
 
@@ -21,6 +22,11 @@ type Props = {
    * Por ahora solo cierra la tarjeta; en producción dispara la server action.
    */
   onConfirm?: (result: VoiceParseResult) => Promise<void> | void;
+  /**
+   * Llamado cuando el usuario toca "Editar" en la tarjeta: el padre abre el
+   * form de alta pre-cargado para que ajuste antes de guardar.
+   */
+  onEdit?: (result: VoiceParseResult) => void;
 };
 
 function PulsingRing() {
@@ -49,7 +55,7 @@ function RecordingTimer({ startedAt }: { startedAt: number }) {
   );
 }
 
-export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
+export function VoiceButton({ onSubmitAudio, onConfirm, onEdit }: Props) {
   const [state, setState] = useState<VoiceState>("idle");
   const [recordingStart, setRecordingStart] = useState<number>(0);
   const [result, setResult] = useState<VoiceParseResult | null>(null);
@@ -61,6 +67,17 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
     return error instanceof Error && error.message.trim().length > 0
       ? error.message
       : fallback;
+  }
+
+  /** Traduce un error del flujo de voz a un mensaje del catálogo, usando el
+   *  `code` que viaja en el error (lo setea postVoiceParse desde errorCode). */
+  function describeParseError(error: unknown) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "unknown";
+    const info = voiceErrorInfo(code);
+    return info.hint ? `${info.message} ${info.hint}` : info.message;
   }
 
   async function startRecording() {
@@ -89,9 +106,7 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
           setResult(parsed);
           setState("result");
         } catch (error) {
-          setErrorMsg(
-            readableError(error, "No pude procesar el audio. Intentá de nuevo.")
-          );
+          setErrorMsg(describeParseError(error));
           setState("error");
         }
       };
@@ -101,7 +116,8 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
       setRecordingStart(Date.now());
       setState("recording");
     } catch {
-      setErrorMsg("No pude acceder al micrófono. Revisá los permisos.");
+      const info = voiceErrorInfo("mic_permission");
+      setErrorMsg(info.hint ? `${info.message} ${info.hint}` : info.message);
       setState("error");
     }
   }
@@ -138,6 +154,14 @@ export function VoiceButton({ onSubmitAudio, onConfirm }: Props) {
                 setState("error");
               }
             }}
+            onEdit={
+              onEdit
+                ? () => {
+                    onEdit(result);
+                    reset();
+                  }
+                : undefined
+            }
             onDiscard={reset}
           />
         </div>

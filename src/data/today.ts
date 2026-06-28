@@ -239,6 +239,8 @@ export async function getTodaySummary(context: ReadyFamilyContext): Promise<Toda
     lastFeeding: feedings[0],
     nextReminder: reminders[0],
     pendingQuestions,
+    diapers,
+    feedings,
     timeline: buildTimeline(diapers, feedings, pendingQuestions).map((item) => ({
       ...item,
       detail: item.detail.length > 80 ? `${item.detail.slice(0, 77)}...` : item.detail,

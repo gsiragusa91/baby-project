@@ -391,3 +391,36 @@
 
 * Dashboard Supabase: poner Site URL = `https://joaco-project.vercel.app` y Redirect URL `https://joaco-project.vercel.app/**` (sin esto el recovery manda a localhost).
 * Borrar usuario `dalubeche@gmail.com` y re-invitar para destrabar el acceso.
+
+---
+
+## 2026-06-28 — Editar/eliminar timeline + voz estructurada (modo ship)
+
+### Qué se construyó
+
+**1. Editar y eliminar registros del timeline.**
+* Migración `20260628120000`: faltaban políticas RLS de UPDATE/DELETE en `diaper_events`, `feeding_events` y `reminders`, y DELETE en `questions`. Sin eso, Supabase rechazaba cualquier edición/borrado aunque el frontend lo intentara. Aplicada a prod con `supabase db push`.
+* Server actions nuevas (`app/actions.ts`): `updateDiaperAction`, `deleteDiaperAction`, `updateFeedingAction`, `deleteFeedingAction`, `updateQuestionAction`, `deleteQuestionAction`. Todas filtran por `family_id` + `baby_id` (defensa en profundidad sobre RLS).
+* Al editar/borrar una lactancia se sincroniza su alarma asociada (helper `syncFeedingReminder`: borra las `scheduled` previas y recrea si corresponde). Evita alarmas huérfanas.
+* UI (`today-client.tsx`): cada card del timeline tiene botón editar (abre el form pre-cargado) y eliminar (con `confirm`). Los forms `DiaperForm`/`FeedingForm`/`QuestionForm` ahora son reusables para alta y edición (prop `initial` + `editId`).
+
+**2. Errores de voz estructurados + interpretación libre.**
+* Catálogo único de errores `src/domain/voice-errors.ts`: cada falla tiene un `code` estable, mensaje en español, hint y `retryable`. Clase `VoiceError` para lanzar desde el server.
+* Antes TODO error de voz colapsaba en un 500 genérico que filtraba el mensaje crudo de OpenAI ("errores diferentes"). Ahora `openai/voice.ts` clasifica por status (401→auth, 429→rate_limit, 5xx→unavailable, red→network) y `route.ts` devuelve `{ errorCode, error }`; el cliente lo traduce con el catálogo.
+* Recordatorios de **tiempo libre**: nuevo `reminder_option = 'custom'` (CHECK ampliado) con hora exacta en `reminder_at`. El prompt del LLM ahora calcula la hora absoluta de alarmas relativas ("recordame en 2 horas" desde las 21h → 23:00) y la devuelve en `reminderAtLocal`.
+* La tarjeta de confirmación muestra la hora exacta de la alarma y el botón "Editar" (antes deshabilitado) ahora abre el form pre-cargado con lo que interpretó el LLM, para ajustar antes de guardar.
+
+### Conceptos nuevos / para repasar
+
+* **RLS no es opcional**: las políticas de Supabase son lo que realmente autoriza la operación. Un INSERT sin política de DELETE deja la fila "inmutable" desde el cliente aunque el código TS esté perfecto.
+* **Catálogo de errores con códigos estables**: separar el código (lógica) del mensaje (UI) permite cambiar textos sin tocar la lógica y mostrar lo mismo venga del front, del route o de OpenAI.
+* **Modelo de datos vs UI**: el `reminder_at` ya era un timestamp absoluto; "tiempo libre" no requirió tabla nueva, solo permitir un nuevo valor en el enum y dejar que el LLM calcule la hora.
+
+### Validación técnica
+
+* `npx tsc --noEmit` ✓ · `npm run build` ✓ · `supabase db push` ✓ (migración en remoto).
+
+### Pendiente de probar en vivo
+
+* Editar/eliminar una toma y verificar que su alarma se actualiza/borra.
+* Grabar "le di la teta a las 21, recordame en 2 horas" y confirmar que tabula inicio 21:00 + recordatorio 23:00.

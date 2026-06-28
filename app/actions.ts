@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getFamilyContext, type ReadyFamilyContext } from "@/src/data/context";
-import { calculateReminderAt } from "@/src/domain/reminders";
+import { DEFAULT_FEEDING_REMINDER, calculateReminderAt } from "@/src/domain/reminders";
 import {
+  deleteByIdSchema,
+  diaperEventEditSchema,
   diaperEventInputSchema,
+  feedingEventEditSchema,
   feedingEventInputSchema,
+  questionEditSchema,
   questionInputSchema
 } from "@/src/domain/schemas";
 import { argentinaLocalInputToIso } from "@/src/domain/time";
@@ -36,6 +40,72 @@ function optionalText(value: unknown) {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Resuelve la hora absoluta (ISO) de la alarma de una toma y el reminder_option
+ * a guardar. Si vino una hora exacta (customReminderAt) manda sobre el preset y
+ * se persiste como 'custom'.
+ */
+function resolveFeedingReminder(parsed: {
+  startedAt: string;
+  reminderOption: ReminderOption;
+  customReminderAt?: string;
+}): { reminderAtIso: string | null; reminderOption: ReminderOption } {
+  if (parsed.customReminderAt) {
+    return {
+      reminderAtIso: argentinaLocalInputToIso(parsed.customReminderAt),
+      reminderOption: "custom"
+    };
+  }
+
+  const startedAtIso = argentinaLocalInputToIso(parsed.startedAt);
+  return {
+    reminderAtIso: calculateReminderAt(startedAtIso, parsed.reminderOption),
+    reminderOption: parsed.reminderOption
+  };
+}
+
+/**
+ * Sincroniza la alarma de una toma: borra las alarmas 'scheduled' previas de esa
+ * toma y crea una nueva si corresponde. Idempotente — sirve igual para alta y
+ * edición (al crear no hay previas, así que el delete es no-op).
+ */
+async function syncFeedingReminder(
+  context: ReadyFamilyContext,
+  feedingId: string,
+  reminderAtIso: string | null
+) {
+  const { error: deleteError } = await context.supabase
+    .from("reminders")
+    .delete()
+    .eq("family_id", context.familyId)
+    .eq("related_event_type", "feeding")
+    .eq("related_event_id", feedingId)
+    .eq("status", "scheduled");
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  if (!reminderAtIso) {
+    return;
+  }
+
+  const { error: insertError } = await context.supabase.from("reminders").insert({
+    baby_id: context.baby.id,
+    family_id: context.familyId,
+    created_by_user_id: context.user.id,
+    related_event_type: "feeding",
+    related_event_id: feedingId,
+    remind_at: reminderAtIso,
+    status: "scheduled",
+    channel: "web_push"
+  });
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
 }
 
 export async function createDiaperAction(formData: FormData) {
@@ -74,14 +144,12 @@ export async function createFeedingAction(formData: FormData) {
     leftBreastMinutes: formData.get("leftBreastMinutes"),
     rightBreastMinutes: formData.get("rightBreastMinutes"),
     notes: optionalText(formData.get("notes")) ?? undefined,
-    reminderOption: formData.get("reminderOption") ?? "2h30"
+    reminderOption: formData.get("reminderOption") ?? "2h30",
+    customReminderAt: formData.get("customReminderAt")
   });
 
   const startedAtIso = argentinaLocalInputToIso(parsed.startedAt);
-  const reminderAt = calculateReminderAt(
-    startedAtIso,
-    parsed.reminderOption as ReminderOption
-  );
+  const { reminderAtIso, reminderOption } = resolveFeedingReminder(parsed);
 
   const { data: feeding, error } = await context.supabase
     .from("feeding_events")
@@ -95,8 +163,8 @@ export async function createFeedingAction(formData: FormData) {
       left_breast_minutes: parsed.leftBreastMinutes ?? null,
       right_breast_minutes: parsed.rightBreastMinutes ?? null,
       notes: parsed.notes ?? null,
-      reminder_option: parsed.reminderOption,
-      reminder_at: reminderAt,
+      reminder_option: reminderOption,
+      reminder_at: reminderAtIso,
       source: "manual"
     })
     .select("id")
@@ -108,21 +176,8 @@ export async function createFeedingAction(formData: FormData) {
 
   const savedFeeding = feeding as { id: string } | null;
 
-  if (reminderAt && savedFeeding) {
-    const { error: reminderError } = await context.supabase.from("reminders").insert({
-      baby_id: context.baby.id,
-      family_id: context.familyId,
-      created_by_user_id: context.user.id,
-      related_event_type: "feeding",
-      related_event_id: savedFeeding.id,
-      remind_at: reminderAt,
-      status: "scheduled",
-      channel: "web_push"
-    });
-
-    if (reminderError) {
-      throw new Error(reminderError.message);
-    }
+  if (savedFeeding) {
+    await syncFeedingReminder(context, savedFeeding.id, reminderAtIso);
   }
 
   revalidatePath("/");
@@ -168,6 +223,170 @@ export async function markQuestionAnsweredAction(formData: FormData) {
     .from("questions")
     .update({ status: "answered" })
     .eq("id", questionId)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+}
+
+// ---------------------------------------------------------------------------
+// Edición y borrado de registros del timeline.
+// Todas filtran por family_id + baby_id además del id: defensa en profundidad
+// junto con las RLS de Supabase (que ya restringen a la familia del usuario).
+// ---------------------------------------------------------------------------
+
+export async function updateDiaperAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const parsed = diaperEventEditSchema.parse({
+    id: formData.get("id"),
+    diaperType: formData.get("diaperType"),
+    eventTime: formData.get("eventTime"),
+    comment: optionalText(formData.get("comment")) ?? undefined,
+    abnormalFlag: formData.get("abnormalFlag") === "on"
+  });
+
+  const { error } = await context.supabase
+    .from("diaper_events")
+    .update({
+      event_time: argentinaLocalInputToIso(parsed.eventTime),
+      diaper_type: parsed.diaperType,
+      comment: parsed.comment ?? null,
+      abnormal_flag: parsed.abnormalFlag
+    })
+    .eq("id", parsed.id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+}
+
+export async function deleteDiaperAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const { id } = deleteByIdSchema.parse({ id: formData.get("id") });
+
+  const { error } = await context.supabase
+    .from("diaper_events")
+    .delete()
+    .eq("id", id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+}
+
+export async function updateFeedingAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const parsed = feedingEventEditSchema.parse({
+    id: formData.get("id"),
+    startedAt: formData.get("startedAt"),
+    leftBreastUsed: formData.get("leftBreastUsed") === "on",
+    rightBreastUsed: formData.get("rightBreastUsed") === "on",
+    leftBreastMinutes: formData.get("leftBreastMinutes"),
+    rightBreastMinutes: formData.get("rightBreastMinutes"),
+    notes: optionalText(formData.get("notes")) ?? undefined,
+    reminderOption: formData.get("reminderOption") ?? "2h30",
+    customReminderAt: formData.get("customReminderAt")
+  });
+
+  const startedAtIso = argentinaLocalInputToIso(parsed.startedAt);
+  const { reminderAtIso, reminderOption } = resolveFeedingReminder(parsed);
+
+  const { error } = await context.supabase
+    .from("feeding_events")
+    .update({
+      started_at: startedAtIso,
+      left_breast_used: parsed.leftBreastUsed || Boolean(parsed.leftBreastMinutes),
+      right_breast_used: parsed.rightBreastUsed || Boolean(parsed.rightBreastMinutes),
+      left_breast_minutes: parsed.leftBreastMinutes ?? null,
+      right_breast_minutes: parsed.rightBreastMinutes ?? null,
+      notes: parsed.notes ?? null,
+      reminder_option: reminderOption,
+      reminder_at: reminderAtIso
+    })
+    .eq("id", parsed.id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  // Reflejamos el cambio en la alarma programada de esta toma.
+  await syncFeedingReminder(context, parsed.id, reminderAtIso);
+
+  revalidatePath("/");
+}
+
+export async function deleteFeedingAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const { id } = deleteByIdSchema.parse({ id: formData.get("id") });
+
+  // Primero la alarma asociada (no hay FK que la borre en cascada), luego la toma.
+  await syncFeedingReminder(context, id, null);
+
+  const { error } = await context.supabase
+    .from("feeding_events")
+    .delete()
+    .eq("id", id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+}
+
+export async function updateQuestionAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const parsed = questionEditSchema.parse({
+    id: formData.get("id"),
+    text: formData.get("text"),
+    category: formData.get("category") ?? "other",
+    professional: formData.get("professional") ?? "pediatrician",
+    priority: formData.get("priority") ?? "normal"
+  });
+
+  const { error } = await context.supabase
+    .from("questions")
+    .update({
+      text: parsed.text,
+      category: parsed.category,
+      professional: parsed.professional,
+      priority: parsed.priority
+    })
+    .eq("id", parsed.id)
+    .eq("family_id", context.familyId)
+    .eq("baby_id", context.baby.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+}
+
+export async function deleteQuestionAction(formData: FormData) {
+  const context = await requireReadyContext();
+  const { id } = deleteByIdSchema.parse({ id: formData.get("id") });
+
+  const { error } = await context.supabase
+    .from("questions")
+    .delete()
+    .eq("id", id)
     .eq("family_id", context.familyId)
     .eq("baby_id", context.baby.id);
 
@@ -241,8 +460,15 @@ async function saveProposedVoiceEvent(
     }
 
     const startedAtIso = argentinaLocalInputToIso(proposedEvent.startedAtLocal);
-    const reminderOption = proposedEvent.reminderOption ?? "none";
-    const reminderAt = calculateReminderAt(startedAtIso, reminderOption);
+    // El servidor ya resolvió la opción (custom/preset/none/default); si por
+    // alguna razón viniera vacía, caemos al default, no a "sin alarma".
+    const reminderOption = proposedEvent.reminderOption ?? DEFAULT_FEEDING_REMINDER;
+    // Para 'custom' la hora viene explícita en reminderAtLocal (la calculó el
+    // LLM, ej. "en 2 horas"); para los presets la derivamos del inicio.
+    const reminderAt =
+      reminderOption === "custom" && proposedEvent.reminderAtLocal
+        ? argentinaLocalInputToIso(proposedEvent.reminderAtLocal)
+        : calculateReminderAt(startedAtIso, reminderOption);
 
     const { data: feeding, error } = await context.supabase
       .from("feeding_events")
@@ -275,21 +501,8 @@ async function saveProposedVoiceEvent(
 
     const savedFeeding = feeding as { id: string } | null;
 
-    if (reminderAt && savedFeeding) {
-      const { error: reminderError } = await context.supabase.from("reminders").insert({
-        baby_id: context.baby.id,
-        family_id: context.familyId,
-        created_by_user_id: context.user.id,
-        related_event_type: "feeding",
-        related_event_id: savedFeeding.id,
-        remind_at: reminderAt,
-        status: "scheduled",
-        channel: "web_push"
-      });
-
-      if (reminderError) {
-        throw new Error(reminderError.message);
-      }
+    if (savedFeeding) {
+      await syncFeedingReminder(context, savedFeeding.id, reminderAt);
     }
 
     return;

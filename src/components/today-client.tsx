@@ -7,8 +7,11 @@ import {
   Droplets,
   LogOut,
   Milk,
+  Pencil,
   ShieldAlert,
-  UserPlus
+  Trash2,
+  UserPlus,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,8 +25,14 @@ import {
   createDiaperAction,
   createFeedingAction,
   createQuestionAction,
+  deleteDiaperAction,
+  deleteFeedingAction,
+  deleteQuestionAction,
   markQuestionAnsweredAction,
-  signOutAction
+  signOutAction,
+  updateDiaperAction,
+  updateFeedingAction,
+  updateQuestionAction
 } from "@/app/actions";
 import {
   CATEGORY_LABELS,
@@ -32,11 +41,56 @@ import {
   PROFESSIONAL_LABELS,
   REMINDER_LABELS
 } from "@/src/domain/labels";
-import { formatArgentinaTime } from "@/src/domain/time";
+import { DEFAULT_FEEDING_REMINDER } from "@/src/domain/reminders";
+import { formatArgentinaTime, toArgentinaDateTimeLocal } from "@/src/domain/time";
 import type { VoiceParseResult } from "@/src/domain/voice.ts";
-import type { DiaperType, TodaySummary } from "@/src/domain/types";
+import type {
+  DiaperEvent,
+  DiaperType,
+  FeedingEvent,
+  Professional,
+  Question,
+  QuestionCategory,
+  QuestionPriority,
+  ReminderOption,
+  TodaySummary
+} from "@/src/domain/types";
 
-type Panel = "diaper" | "feeding" | "question" | null;
+/** Valores iniciales de cada form. Las horas van en formato datetime-local
+ * (YYYY-MM-DDTHH:mm), así el form no tiene que convertir nada. */
+type DiaperInitial = {
+  eventTimeLocal?: string;
+  diaperType?: DiaperType;
+  comment?: string | null;
+  abnormalFlag?: boolean | null;
+};
+
+type FeedingInitial = {
+  startedAtLocal?: string;
+  leftBreastUsed?: boolean | null;
+  rightBreastUsed?: boolean | null;
+  leftBreastMinutes?: number | null;
+  rightBreastMinutes?: number | null;
+  notes?: string | null;
+  reminderOption?: ReminderOption | null;
+  customReminderAtLocal?: string | null;
+};
+
+type QuestionInitial = {
+  text?: string;
+  category?: QuestionCategory;
+  professional?: Professional;
+  priority?: QuestionPriority;
+};
+
+/** Estado del panel inferior: cerrado, o abierto para crear/editar un tipo.
+ *  Si trae `editId` es edición; si no, es alta (con `initial` opcional para
+ *  pre-cargar, p. ej. desde el resultado de voz). */
+type PanelState =
+  | null
+  | { kind: "diaper"; editId?: string; initial?: DiaperInitial }
+  | { kind: "feeding"; editId?: string; initial?: FeedingInitial }
+  | { kind: "question"; editId?: string; initial?: QuestionInitial };
 
 /** Simula POST /api/voice/parse para el preview (sin backend real). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -87,14 +141,71 @@ async function postVoiceParse(blob: Blob): Promise<VoiceParseResult> {
   const body = await response.json();
 
   if (!response.ok) {
-    throw new Error(
-      typeof body?.error === "string"
-        ? body.error
-        : "No pude procesar el audio. Intentá de nuevo."
-    );
+    // El backend manda `errorCode` (estable). Lo propagamos para que el botón
+    // de voz lo traduzca con el catálogo; caemos a "unknown" si no vino.
+    const error = new Error(
+      typeof body?.error === "string" ? body.error : "No pude procesar el audio."
+    ) as Error & { code?: string };
+    error.code = typeof body?.errorCode === "string" ? body.errorCode : "unknown";
+    throw error;
   }
 
   return body as VoiceParseResult;
+}
+
+/** ISO -> datetime-local en hora de Argentina, para pre-cargar inputs date. */
+function isoToLocalInput(iso?: string | null) {
+  return iso ? toArgentinaDateTimeLocal(new Date(iso)) : undefined;
+}
+
+/** Convierte el evento propuesto por voz en el estado del panel de alta,
+ *  para que el usuario lo edite antes de guardar. Devuelve null si el intent
+ *  no tiene un form (recordatorio suelto / no entendido). */
+function proposedToPanel(result: VoiceParseResult): PanelState {
+  const e = result.proposedEvent;
+
+  if (e.intent === "register_diaper") {
+    return {
+      kind: "diaper",
+      initial: {
+        eventTimeLocal: e.eventTimeLocal,
+        diaperType: e.diaperType,
+        comment: e.comment,
+        abnormalFlag: e.abnormalFlag
+      }
+    };
+  }
+
+  if (e.intent === "register_feeding") {
+    return {
+      kind: "feeding",
+      initial: {
+        startedAtLocal: e.startedAtLocal,
+        leftBreastUsed: e.leftBreastUsed,
+        rightBreastUsed: e.rightBreastUsed,
+        leftBreastMinutes: e.leftBreastMinutes,
+        rightBreastMinutes: e.rightBreastMinutes,
+        notes: e.notes,
+        reminderOption: e.reminderOption,
+        customReminderAtLocal:
+          e.reminderOption === "custom" ? e.reminderAtLocal : undefined
+      }
+    };
+  }
+
+  if (e.intent === "create_question") {
+    return {
+      kind: "question",
+      initial: {
+        text: e.text,
+        category: e.category,
+        professional: e.professional,
+        priority: e.priority
+      }
+    };
+  }
+
+  return null;
 }
 
 type TodayClientProps = {
@@ -143,9 +254,50 @@ function PillAction({
   );
 }
 
-function DiaperForm({ nowLocal }: { nowLocal: string }) {
+/** Botón de borrado: form que postea la server action de delete con confirm. */
+function DeleteButton({
+  action,
+  id,
+  label
+}: {
+  action: (formData: FormData) => Promise<void>;
+  id: string;
+  label: string;
+}) {
   return (
-    <form action={createDiaperAction} className="space-y-4">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm("¿Eliminar este registro? No se puede deshacer.")) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <input name="id" type="hidden" value={id} />
+      <button
+        aria-label={label}
+        className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-soft)] hover:text-[var(--danger)]"
+        type="submit"
+      >
+        <Trash2 size={16} />
+      </button>
+    </form>
+  );
+}
+
+function DiaperForm({
+  nowLocal,
+  initial,
+  editId
+}: {
+  nowLocal: string;
+  initial?: DiaperInitial;
+  editId?: string;
+}) {
+  const checkedType = initial?.diaperType ?? "pee";
+  return (
+    <form action={editId ? updateDiaperAction : createDiaperAction} className="space-y-4">
+      {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <div className="grid grid-cols-2 gap-3">
         {diaperTypes.map((type) => (
           <label
@@ -157,7 +309,7 @@ function DiaperForm({ nowLocal }: { nowLocal: string }) {
               name="diaperType"
               type="radio"
               value={type}
-              defaultChecked={type === "pee"}
+              defaultChecked={type === checkedType}
             />
             <span className="peer-checked:text-[var(--diaper)]">
               {DIAPER_LABELS[type]}
@@ -169,16 +321,17 @@ function DiaperForm({ nowLocal }: { nowLocal: string }) {
         className="field"
         name="eventTime"
         type="datetime-local"
-        defaultValue={nowLocal}
+        defaultValue={initial?.eventTimeLocal ?? nowLocal}
         required
       />
       <textarea
         className="field min-h-24 resize-none"
         name="comment"
         placeholder="Comentario"
+        defaultValue={initial?.comment ?? ""}
       />
       <label className="flex tap-target items-center gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold">
-        <input name="abnormalFlag" type="checkbox" />
+        <input name="abnormalFlag" type="checkbox" defaultChecked={Boolean(initial?.abnormalFlag)} />
         <ShieldAlert size={20} />
         Marcar para revisar
       </label>
@@ -186,26 +339,46 @@ function DiaperForm({ nowLocal }: { nowLocal: string }) {
         className="tap-target w-full rounded-[var(--radius-lg)] bg-[var(--primary)] px-5 py-4 text-base font-bold text-[var(--primary-ink)]"
         type="submit"
       >
-        Guardar pañal
+        {editId ? "Guardar cambios" : "Guardar pañal"}
       </button>
     </form>
   );
 }
 
-function FeedingForm({ nowLocal }: { nowLocal: string }) {
+function FeedingForm({
+  nowLocal,
+  initial,
+  editId
+}: {
+  nowLocal: string;
+  initial?: FeedingInitial;
+  editId?: string;
+}) {
+  // El <select> muestra el preset si lo había; "custom" se maneja con el campo
+  // de hora exacta de abajo (que, si está completo, manda sobre el preset).
+  const presetDefault =
+    initial?.reminderOption && initial.reminderOption !== "custom"
+      ? initial.reminderOption
+      : DEFAULT_FEEDING_REMINDER;
+
   return (
-    <form action={createFeedingAction} className="space-y-4">
+    <form action={editId ? updateFeedingAction : createFeedingAction} className="space-y-4">
+      {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <input
         className="field"
         name="startedAt"
         type="datetime-local"
-        defaultValue={nowLocal}
+        defaultValue={initial?.startedAtLocal ?? nowLocal}
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <label className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3">
           <span className="flex items-center gap-2 text-sm font-bold">
-            <input name="leftBreastUsed" type="checkbox" defaultChecked />
+            <input
+              name="leftBreastUsed"
+              type="checkbox"
+              defaultChecked={initial ? Boolean(initial.leftBreastUsed) : true}
+            />
             Izquierda
           </span>
           <input
@@ -216,11 +389,16 @@ function FeedingForm({ nowLocal }: { nowLocal: string }) {
             max="240"
             inputMode="numeric"
             placeholder="min"
+            defaultValue={initial?.leftBreastMinutes ?? ""}
           />
         </label>
         <label className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3">
           <span className="flex items-center gap-2 text-sm font-bold">
-            <input name="rightBreastUsed" type="checkbox" />
+            <input
+              name="rightBreastUsed"
+              type="checkbox"
+              defaultChecked={Boolean(initial?.rightBreastUsed)}
+            />
             Derecha
           </span>
           <input
@@ -231,55 +409,82 @@ function FeedingForm({ nowLocal }: { nowLocal: string }) {
             max="240"
             inputMode="numeric"
             placeholder="min"
+            defaultValue={initial?.rightBreastMinutes ?? ""}
           />
         </label>
       </div>
-      <select className="field" name="reminderOption" defaultValue="2h30">
-        {Object.entries(REMINDER_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
+      <select className="field" name="reminderOption" defaultValue={presetDefault}>
+        {Object.entries(REMINDER_LABELS)
+          .filter(([value]) => value !== "custom")
+          .map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
       </select>
+      <label className="block">
+        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink-soft)]">
+          O alarma a una hora exacta (opcional)
+        </span>
+        <input
+          className="field mt-2"
+          name="customReminderAt"
+          type="datetime-local"
+          defaultValue={initial?.customReminderAtLocal ?? ""}
+        />
+      </label>
       <textarea
         className="field min-h-24 resize-none"
         name="notes"
         placeholder="Notas"
+        defaultValue={initial?.notes ?? ""}
       />
       <button
         className="tap-target w-full rounded-[var(--radius-lg)] bg-[var(--primary)] px-5 py-4 text-base font-bold text-[var(--primary-ink)]"
         type="submit"
       >
-        Guardar lactancia
+        {editId ? "Guardar cambios" : "Guardar lactancia"}
       </button>
     </form>
   );
 }
 
-function QuestionForm() {
+function QuestionForm({
+  initial,
+  editId
+}: {
+  initial?: QuestionInitial;
+  editId?: string;
+}) {
   return (
-    <form action={createQuestionAction} className="space-y-4">
+    <form action={editId ? updateQuestionAction : createQuestionAction} className="space-y-4">
+      {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <textarea
         className="field min-h-28 resize-none"
         name="text"
         placeholder="Duda"
+        defaultValue={initial?.text ?? ""}
         required
       />
-      <select className="field" name="category" defaultValue="feeding">
+      <select className="field" name="category" defaultValue={initial?.category ?? "feeding"}>
         {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
       </select>
-      <select className="field" name="professional" defaultValue="pediatrician">
+      <select
+        className="field"
+        name="professional"
+        defaultValue={initial?.professional ?? "pediatrician"}
+      >
         {Object.entries(PROFESSIONAL_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
       </select>
-      <select className="field" name="priority" defaultValue="normal">
+      <select className="field" name="priority" defaultValue={initial?.priority ?? "normal"}>
         {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
@@ -290,27 +495,51 @@ function QuestionForm() {
         className="tap-target w-full rounded-[var(--radius-lg)] bg-[var(--primary)] px-5 py-4 text-base font-bold text-[var(--primary-ink)]"
         type="submit"
       >
-        Guardar duda
+        {editId ? "Guardar cambios" : "Guardar duda"}
       </button>
     </form>
   );
 }
 
-function ActivePanel({ panel, nowLocal }: { panel: Panel; nowLocal: string }) {
+function ActivePanel({
+  panel,
+  nowLocal,
+  onClose
+}: {
+  panel: PanelState;
+  nowLocal: string;
+  onClose: () => void;
+}) {
   if (!panel) {
     return null;
   }
 
+  const isEdit = Boolean(panel.editId);
+  const titleByKind = { diaper: "Pañal", feeding: "Lactancia", question: "Duda" };
+  const title = `${isEdit ? "Editar" : ""} ${titleByKind[panel.kind]}`.trim();
+
   return (
     <section className="sheet px-5 py-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-bold">
-          {panel === "diaper" ? "Pañal" : panel === "feeding" ? "Lactancia" : "Duda"}
-        </h2>
+        <h2 className="text-xl font-bold">{title}</h2>
+        <button
+          aria-label="Cerrar"
+          className="tap-target rounded-full border border-[var(--line)] bg-[var(--surface)] p-2"
+          type="button"
+          onClick={onClose}
+        >
+          <X size={18} />
+        </button>
       </div>
-      {panel === "diaper" ? <DiaperForm nowLocal={nowLocal} /> : null}
-      {panel === "feeding" ? <FeedingForm nowLocal={nowLocal} /> : null}
-      {panel === "question" ? <QuestionForm /> : null}
+      {panel.kind === "diaper" ? (
+        <DiaperForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} />
+      ) : null}
+      {panel.kind === "feeding" ? (
+        <FeedingForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} />
+      ) : null}
+      {panel.kind === "question" ? (
+        <QuestionForm initial={panel.initial} editId={panel.editId} />
+      ) : null}
     </section>
   );
 }
@@ -321,7 +550,7 @@ export function TodayClient({
   voiceParser = "api"
 }: TodayClientProps) {
   const router = useRouter();
-  const [panel, setPanel] = useState<Panel>(null);
+  const [panel, setPanel] = useState<PanelState>(null);
   const submitVoiceAudio = voiceParser === "mock" ? mockVoiceParse : postVoiceParse;
   const confirmVoiceEvent =
     voiceParser === "mock"
@@ -330,6 +559,32 @@ export function TodayClient({
           await confirmVoiceEventAction(result);
           router.refresh();
         };
+
+  // Abre el panel correspondiente al item del timeline, pre-cargado para editar.
+  function editTimelineItem(type: string, id: string) {
+    if (type === "diaper") {
+      const event = summary.diapers.find((d) => d.id === id);
+      if (event) {
+        setPanel({ kind: "diaper", editId: id, initial: diaperToInitial(event) });
+      }
+    } else if (type === "feeding") {
+      const event = summary.feedings.find((f) => f.id === id);
+      if (event) {
+        setPanel({ kind: "feeding", editId: id, initial: feedingToInitial(event) });
+      }
+    } else if (type === "question") {
+      const event = summary.pendingQuestions.find((q) => q.id === id);
+      if (event) {
+        setPanel({ kind: "question", editId: id, initial: questionToInitial(event) });
+      }
+    }
+  }
+
+  const deleteActionByType: Record<string, (fd: FormData) => Promise<void>> = {
+    diaper: deleteDiaperAction,
+    feeding: deleteFeedingAction,
+    question: deleteQuestionAction
+  };
 
   return (
     <main className="mobile-shell flex min-h-svh flex-col">
@@ -415,7 +670,7 @@ export function TodayClient({
           ) : (
             summary.timeline.map((item) => (
               <div
-                className="flex gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3"
+                className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3"
                 key={`${item.type}-${item.id}`}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-strong)]">
@@ -423,11 +678,26 @@ export function TodayClient({
                   {item.type === "feeding" ? <Milk size={19} className="text-[var(--feed)]" /> : null}
                   {item.type === "question" ? <CircleHelp size={19} className="text-[var(--sleep)]" /> : null}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold">{item.title}</p>
                   <p className="mt-1 line-clamp-2 text-sm text-[var(--ink-soft)]">
                     {item.detail}
                   </p>
+                </div>
+                <div className="flex shrink-0 items-center">
+                  <button
+                    aria-label="Editar"
+                    className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-soft)] hover:text-[var(--primary)]"
+                    type="button"
+                    onClick={() => editTimelineItem(item.type, item.id)}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <DeleteButton
+                    action={deleteActionByType[item.type]}
+                    id={item.id}
+                    label="Eliminar"
+                  />
                 </div>
               </div>
             ))
@@ -460,7 +730,7 @@ export function TodayClient({
         ) : null}
       </section>
 
-      <ActivePanel panel={panel} nowLocal={summary.nowLocal} />
+      <ActivePanel panel={panel} nowLocal={summary.nowLocal} onClose={() => setPanel(null)} />
 
       {/* Nav flotante: pill con las acciones manuales + mic de VOZ SEPARADO a la
           derecha (zona del pulgar). El mic se distingue por chip candy + glow y un
@@ -472,23 +742,23 @@ export function TodayClient({
           style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
         >
           <PillAction
-            active={panel === "diaper"}
+            active={panel?.kind === "diaper"}
             label="Pañal"
-            onClick={() => setPanel(panel === "diaper" ? null : "diaper")}
+            onClick={() => setPanel(panel?.kind === "diaper" ? null : { kind: "diaper" })}
           >
             <Droplets size={20} />
           </PillAction>
           <PillAction
-            active={panel === "feeding"}
+            active={panel?.kind === "feeding"}
             label="Toma"
-            onClick={() => setPanel(panel === "feeding" ? null : "feeding")}
+            onClick={() => setPanel(panel?.kind === "feeding" ? null : { kind: "feeding" })}
           >
             <Milk size={20} />
           </PillAction>
           <PillAction
-            active={panel === "question"}
+            active={panel?.kind === "question"}
             label="Duda"
-            onClick={() => setPanel(panel === "question" ? null : "question")}
+            onClick={() => setPanel(panel?.kind === "question" ? null : { kind: "question" })}
           >
             <CircleHelp size={20} />
           </PillAction>
@@ -499,9 +769,47 @@ export function TodayClient({
           <VoiceButton
             onConfirm={confirmVoiceEvent}
             onSubmitAudio={submitVoiceAudio}
+            onEdit={(result) => {
+              const next = proposedToPanel(result);
+              if (next) setPanel(next);
+            }}
           />
         </div>
       </nav>
     </main>
   );
+}
+
+// --- Mappers de evento del día -> valores iniciales del form de edición ---
+
+function diaperToInitial(event: DiaperEvent): DiaperInitial {
+  return {
+    eventTimeLocal: isoToLocalInput(event.eventTime),
+    diaperType: event.diaperType,
+    comment: event.comment,
+    abnormalFlag: event.abnormalFlag
+  };
+}
+
+function feedingToInitial(event: FeedingEvent): FeedingInitial {
+  return {
+    startedAtLocal: isoToLocalInput(event.startedAt),
+    leftBreastUsed: event.leftBreastUsed,
+    rightBreastUsed: event.rightBreastUsed,
+    leftBreastMinutes: event.leftBreastMinutes,
+    rightBreastMinutes: event.rightBreastMinutes,
+    notes: event.notes,
+    reminderOption: event.reminderOption,
+    customReminderAtLocal:
+      event.reminderOption === "custom" ? isoToLocalInput(event.reminderAt) : undefined
+  };
+}
+
+function questionToInitial(event: Question): QuestionInitial {
+  return {
+    text: event.text,
+    category: event.category,
+    professional: event.professional,
+    priority: event.priority
+  };
 }

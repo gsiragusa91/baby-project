@@ -9,6 +9,8 @@ type Props = {
   result: VoiceParseResult;
   onConfirm: () => void;
   onDiscard: () => void;
+  /** Si se provee, habilita el botón "Editar" (abre el form pre-cargado). */
+  onEdit?: () => void;
 };
 
 function ConfirmRow({ label, value }: { label: string; value: string }) {
@@ -58,9 +60,13 @@ function EventRows({ result }: { result: VoiceParseResult }) {
         {proposedEvent.rightBreastUsed && proposedEvent.rightBreastMinutes != null && (
           <ConfirmRow label="Derecha" value={`${proposedEvent.rightBreastMinutes} min`} />
         )}
-        {proposedEvent.reminderOption && proposedEvent.reminderOption !== "none" && (
-          <ConfirmRow label="Alarma" value={REMINDER_LABELS[proposedEvent.reminderOption]} />
-        )}
+        {proposedEvent.reminderOption === "custom" && proposedEvent.reminderAtLocal ? (
+          <ConfirmRow label="Recordatorio" value={proposedEvent.reminderAtLocal.slice(11, 16)} />
+        ) : proposedEvent.reminderOption &&
+          proposedEvent.reminderOption !== "none" &&
+          proposedEvent.reminderOption !== "custom" ? (
+          <ConfirmRow label="Recordatorio" value={REMINDER_LABELS[proposedEvent.reminderOption]} />
+        ) : null}
         {proposedEvent.notes && (
           <ConfirmRow label="Nota" value={proposedEvent.notes} />
         )}
@@ -101,9 +107,13 @@ function EventRows({ result }: { result: VoiceParseResult }) {
   if (proposedEvent.intent === "set_reminder") {
     return (
       <>
-        {proposedEvent.reminderOption && proposedEvent.reminderOption !== "none" && (
+        {proposedEvent.remindAtLocal ? (
+          <ConfirmRow label="Recordatorio" value={proposedEvent.remindAtLocal.slice(11, 16)} />
+        ) : proposedEvent.reminderOption &&
+          proposedEvent.reminderOption !== "none" &&
+          proposedEvent.reminderOption !== "custom" ? (
           <ConfirmRow label="En" value={REMINDER_LABELS[proposedEvent.reminderOption]} />
-        )}
+        ) : null}
       </>
     );
   }
@@ -113,8 +123,15 @@ function EventRows({ result }: { result: VoiceParseResult }) {
   );
 }
 
-export function VoiceConfirmationCard({ result, onConfirm, onDiscard }: Props) {
+export function VoiceConfirmationCard({ result, onConfirm, onDiscard, onEdit }: Props) {
   const canConfirm = result.intent !== "unknown";
+  // "Editar" solo tiene sentido si hay un form para ese intent (no para
+  // recordatorio suelto ni cuando no se entendió nada).
+  const canEdit =
+    Boolean(onEdit) &&
+    (result.intent === "register_feeding" ||
+      result.intent === "register_diaper" ||
+      result.intent === "create_question");
 
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface-strong)] p-5">
@@ -160,9 +177,13 @@ export function VoiceConfirmationCard({ result, onConfirm, onDiscard }: Props) {
           Confirmar
         </button>
         <button
-          className="tap-target flex items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold opacity-50"
-          disabled
+          className={[
+            "tap-target flex items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-bold",
+            canEdit ? "" : "opacity-50"
+          ].join(" ")}
+          disabled={!canEdit}
           type="button"
+          onClick={canEdit ? onEdit : undefined}
         >
           <Pencil size={15} />
           Editar

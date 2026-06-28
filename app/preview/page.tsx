@@ -91,6 +91,36 @@ const mockSummary: TodaySummary = {
     { id: "f1", type: "feeding", title: "Lactancia", detail: "Izq 12 min · Der 8 min", time: "03:10" },
     { id: "d1", type: "diaper", title: "Pañal", detail: "Pis + caca", time: "04:05" },
     { id: "q1", type: "question", title: "Duda", detail: "¿Es normal el hipo después de tomar?", time: "06:00" }
+  ],
+  diapers: [
+    {
+      id: "d1",
+      babyId: "mock-baby",
+      familyId: "mock-family",
+      createdByUserId: "u1",
+      createdAt: "2026-06-24T04:05:00-03:00",
+      eventTime: "2026-06-24T04:05:00-03:00",
+      diaperType: "pee_poop",
+      abnormalFlag: false,
+      source: "manual"
+    }
+  ],
+  feedings: [
+    {
+      id: "f1",
+      babyId: "mock-baby",
+      familyId: "mock-family",
+      createdByUserId: "u1",
+      createdAt: "2026-06-24T03:10:00-03:00",
+      startedAt: "2026-06-24T03:10:00-03:00",
+      leftBreastUsed: true,
+      rightBreastUsed: true,
+      leftBreastMinutes: 12,
+      rightBreastMinutes: 8,
+      reminderOption: "2h30",
+      reminderAt: "2026-06-24T05:40:00-03:00",
+      source: "manual"
+    }
   ]
 };
 

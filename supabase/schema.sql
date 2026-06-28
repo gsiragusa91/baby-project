@@ -68,7 +68,7 @@ create table if not exists public.feeding_events (
   left_breast_minutes integer check (left_breast_minutes is null or left_breast_minutes >= 0),
   right_breast_minutes integer check (right_breast_minutes is null or right_breast_minutes >= 0),
   notes text,
-  reminder_option text check (reminder_option is null or reminder_option in ('2h', '2h30', '3h', 'none')),
+  reminder_option text check (reminder_option is null or reminder_option in ('2h', '2h30', '3h', 'none', 'custom')),
   reminder_at timestamptz,
   source text not null check (source in ('manual', 'voice')),
   transcript text
@@ -423,6 +423,28 @@ create policy "Members can insert feeding events"
 on public.feeding_events for insert
 with check (public.is_family_member(family_id) and created_by_user_id = auth.uid());
 
+drop policy if exists "Members can update diaper events" on public.diaper_events;
+create policy "Members can update diaper events"
+on public.diaper_events for update
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "Members can delete diaper events" on public.diaper_events;
+create policy "Members can delete diaper events"
+on public.diaper_events for delete
+using (public.is_family_member(family_id));
+
+drop policy if exists "Members can update feeding events" on public.feeding_events;
+create policy "Members can update feeding events"
+on public.feeding_events for update
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "Members can delete feeding events" on public.feeding_events;
+create policy "Members can delete feeding events"
+on public.feeding_events for delete
+using (public.is_family_member(family_id));
+
 drop policy if exists "Members can read questions" on public.questions;
 create policy "Members can read questions"
 on public.questions for select
@@ -439,6 +461,11 @@ on public.questions for update
 using (public.is_family_member(family_id))
 with check (public.is_family_member(family_id));
 
+drop policy if exists "Members can delete questions" on public.questions;
+create policy "Members can delete questions"
+on public.questions for delete
+using (public.is_family_member(family_id));
+
 drop policy if exists "Members can read reminders" on public.reminders;
 create policy "Members can read reminders"
 on public.reminders for select
@@ -448,6 +475,17 @@ drop policy if exists "Members can insert reminders" on public.reminders;
 create policy "Members can insert reminders"
 on public.reminders for insert
 with check (public.is_family_member(family_id) and created_by_user_id = auth.uid());
+
+drop policy if exists "Members can update reminders" on public.reminders;
+create policy "Members can update reminders"
+on public.reminders for update
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "Members can delete reminders" on public.reminders;
+create policy "Members can delete reminders"
+on public.reminders for delete
+using (public.is_family_member(family_id));
 
 drop policy if exists "Members can read voice parse logs" on public.voice_parse_logs;
 create policy "Members can read voice parse logs"
