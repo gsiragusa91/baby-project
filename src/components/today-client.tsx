@@ -254,49 +254,26 @@ function PillAction({
   );
 }
 
-/** Botón de borrado: form que postea la server action de delete con confirm. */
-function DeleteButton({
-  action,
-  id,
-  label
-}: {
-  action: (formData: FormData) => Promise<void>;
-  id: string;
-  label: string;
-}) {
-  return (
-    <form
-      action={action}
-      onSubmit={(e) => {
-        if (!window.confirm("¿Eliminar este registro? No se puede deshacer.")) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <input name="id" type="hidden" value={id} />
-      <button
-        aria-label={label}
-        className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-soft)] hover:text-[var(--danger)]"
-        type="submit"
-      >
-        <Trash2 size={16} />
-      </button>
-    </form>
-  );
-}
-
 function DiaperForm({
   nowLocal,
   initial,
-  editId
+  editId,
+  onDone
 }: {
   nowLocal: string;
   initial?: DiaperInitial;
   editId?: string;
+  onDone?: () => void;
 }) {
   const checkedType = initial?.diaperType ?? "pee";
   return (
-    <form action={editId ? updateDiaperAction : createDiaperAction} className="space-y-4">
+    <form
+      action={async (formData) => {
+        await (editId ? updateDiaperAction : createDiaperAction)(formData);
+        onDone?.();
+      }}
+      className="space-y-4"
+    >
       {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <div className="grid grid-cols-2 gap-3">
         {diaperTypes.map((type) => (
@@ -348,11 +325,13 @@ function DiaperForm({
 function FeedingForm({
   nowLocal,
   initial,
-  editId
+  editId,
+  onDone
 }: {
   nowLocal: string;
   initial?: FeedingInitial;
   editId?: string;
+  onDone?: () => void;
 }) {
   // El <select> muestra el preset si lo había; "custom" se maneja con el campo
   // de hora exacta de abajo (que, si está completo, manda sobre el preset).
@@ -362,7 +341,13 @@ function FeedingForm({
       : DEFAULT_FEEDING_REMINDER;
 
   return (
-    <form action={editId ? updateFeedingAction : createFeedingAction} className="space-y-4">
+    <form
+      action={async (formData) => {
+        await (editId ? updateFeedingAction : createFeedingAction)(formData);
+        onDone?.();
+      }}
+      className="space-y-4"
+    >
       {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <input
         className="field"
@@ -451,13 +436,21 @@ function FeedingForm({
 
 function QuestionForm({
   initial,
-  editId
+  editId,
+  onDone
 }: {
   initial?: QuestionInitial;
   editId?: string;
+  onDone?: () => void;
 }) {
   return (
-    <form action={editId ? updateQuestionAction : createQuestionAction} className="space-y-4">
+    <form
+      action={async (formData) => {
+        await (editId ? updateQuestionAction : createQuestionAction)(formData);
+        onDone?.();
+      }}
+      className="space-y-4"
+    >
       {editId ? <input name="id" type="hidden" value={editId} /> : null}
       <textarea
         className="field min-h-28 resize-none"
@@ -504,11 +497,13 @@ function QuestionForm({
 function ActivePanel({
   panel,
   nowLocal,
-  onClose
+  onClose,
+  onDelete
 }: {
   panel: PanelState;
   nowLocal: string;
   onClose: () => void;
+  onDelete: (kind: "diaper" | "feeding" | "question", id: string) => void;
 }) {
   if (!panel) {
     return null;
@@ -532,13 +527,26 @@ function ActivePanel({
         </button>
       </div>
       {panel.kind === "diaper" ? (
-        <DiaperForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} />
+        <DiaperForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} onDone={onClose} />
       ) : null}
       {panel.kind === "feeding" ? (
-        <FeedingForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} />
+        <FeedingForm nowLocal={nowLocal} initial={panel.initial} editId={panel.editId} onDone={onClose} />
       ) : null}
       {panel.kind === "question" ? (
-        <QuestionForm initial={panel.initial} editId={panel.editId} />
+        <QuestionForm initial={panel.initial} editId={panel.editId} onDone={onClose} />
+      ) : null}
+
+      {/* En modo edición, el borrado vive acá (la card del timeline abre este
+          panel; así no metemos botones diminutos ni un botón dentro de otro). */}
+      {panel.editId ? (
+        <button
+          className="tap-target mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm font-bold text-[var(--danger)]"
+          type="button"
+          onClick={() => onDelete(panel.kind, panel.editId as string)}
+        >
+          <Trash2 size={16} />
+          Eliminar registro
+        </button>
       ) : null}
     </section>
   );
@@ -585,6 +593,18 @@ export function TodayClient({
     feeding: deleteFeedingAction,
     question: deleteQuestionAction
   };
+
+  // Borra el registro en edición (con confirmación) y cierra el panel.
+  async function deleteCurrent(kind: "diaper" | "feeding" | "question", id: string) {
+    if (!window.confirm("¿Eliminar este registro? No se puede deshacer.")) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append("id", id);
+    await deleteActionByType[kind](formData);
+    setPanel(null);
+    router.refresh();
+  }
 
   return (
     <main className="mobile-shell flex min-h-svh flex-col">
@@ -669,9 +689,13 @@ export function TodayClient({
             </p>
           ) : (
             summary.timeline.map((item) => (
-              <div
-                className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3"
+              // Card completa tappable: abre el panel de edición (con opción de
+              // eliminar adentro). Más descubrible que íconos chiquitos.
+              <button
+                type="button"
+                className="flex w-full items-start gap-3 rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3 text-left transition-transform active:scale-[0.99]"
                 key={`${item.type}-${item.id}`}
+                onClick={() => editTimelineItem(item.type, item.id)}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-strong)]">
                   {item.type === "diaper" ? <Droplets size={19} className="text-[var(--diaper)]" /> : null}
@@ -684,22 +708,8 @@ export function TodayClient({
                     {item.detail}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center">
-                  <button
-                    aria-label="Editar"
-                    className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-soft)] hover:text-[var(--primary)]"
-                    type="button"
-                    onClick={() => editTimelineItem(item.type, item.id)}
-                  >
-                    <Pencil size={15} />
-                  </button>
-                  <DeleteButton
-                    action={deleteActionByType[item.type]}
-                    id={item.id}
-                    label="Eliminar"
-                  />
-                </div>
-              </div>
+                <Pencil size={15} className="mt-1 shrink-0 text-[var(--ink-soft)]" />
+              </button>
             ))
           )}
         </div>
@@ -730,7 +740,12 @@ export function TodayClient({
         ) : null}
       </section>
 
-      <ActivePanel panel={panel} nowLocal={summary.nowLocal} onClose={() => setPanel(null)} />
+      <ActivePanel
+        panel={panel}
+        nowLocal={summary.nowLocal}
+        onClose={() => setPanel(null)}
+        onDelete={deleteCurrent}
+      />
 
       {/* Nav flotante: pill con las acciones manuales + mic de VOZ SEPARADO a la
           derecha (zona del pulgar). El mic se distingue por chip candy + glow y un
