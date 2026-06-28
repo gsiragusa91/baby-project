@@ -127,26 +127,38 @@ export function BabyScreen({ baby, album }: { baby: Baby; album: AlbumPhoto[] })
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {groupByWeek(album).map(([weekIndex, photos]) => (
-            <div key={weekIndex} className="space-y-2">
+            <div key={weekIndex} className="space-y-3">
               <h2 className="text-sm font-bold text-[var(--ink-soft)]">
                 Semana {weekIndex + 1}
               </h2>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-4">
                 {photos.map((photo) => (
                   <button
                     key={photo.id}
                     type="button"
                     onClick={() => setSheet({ type: "view", photo })}
-                    className="aspect-square overflow-hidden rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface-strong)]"
+                    className="block w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface)] text-left transition-transform active:scale-[0.99]"
                   >
+                    <div className="px-4 pb-2 pt-3">
+                      {photo.note ? (
+                        <p className="text-base font-bold leading-snug">{photo.note}</p>
+                      ) : null}
+                      <p
+                        className={`text-xs font-semibold text-[var(--ink-soft)] ${
+                          photo.note ? "mt-0.5" : ""
+                        }`}
+                      >
+                        {formatTaken(photo.takenAt)}
+                      </p>
+                    </div>
                     {photo.signedUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={photo.signedUrl}
                         alt={photo.note ?? "Foto del bebé"}
-                        className="h-full w-full object-cover"
+                        className="max-h-[440px] w-full object-cover"
                       />
                     ) : null}
                   </button>
