@@ -1,0 +1,111 @@
+src/data/today.ts
+  s_1082b937d93a48::t_262066c3bdfb85 242-243
+app/actions.ts
+  s_1082b937d93a48::t_204338abdcc486 45-110
+  s_1082b937d93a48::t_c7095096b3b6ca 147-148,152,166-167,179-180
+  s_1082b937d93a48::t_ea256cae1bcea2 466-471,504-505
+  s_1082b937d93a48::t_16ad21a7ab257e 9-10,12,14
+  s_1082b937d93a48::t_f45df30010b3db 7
+  s_1082b937d93a48::t_fca8b7cba280f8 236-399
+  s_1082b937d93a48::t_abda73755a6bc8 463-465
+app/api/voice/parse/route.ts
+  s_1082b937d93a48::t_6311774419bfe6 53,57,64,68,72,85-89,91-92
+  s_1082b937d93a48::t_3a91429f6f9dd7 6-9,19-37,40-41,45
+  s_1082b937d93a48::t_92039c037b81bb 5
+src/components/voice-confirmation-card.tsx
+  s_1082b937d93a48::t_9e205dac2b4020 180-184,186
+  s_1082b937d93a48::t_93066494714392 126,128-134
+  s_1082b937d93a48::t_ccd3c68dcd06c1 12-13
+  s_1082b937d93a48::t_c8de81bcb2397e 63-69
+  s_1082b937d93a48::t_f03c259f53293a 110-114,116
+scripts/check-voice-rows.mjs
+  s_374db07aad0108::t_2657c262e3e689 1-90
+src/server/openai/voice.ts
+  s_1082b937d93a48::t_8dbd4dcd7166c1 90-130
+  s_1082b937d93a48::t_a498e7ece26bbb 324-330
+  s_1082b937d93a48::t_9ed762174634ca 12
+  s_1082b937d93a48::t_03513dff85debe 303-323,331-350,352-356,359-362,369-374
+  s_1082b937d93a48::t_421c94aa11c419 30
+  s_1082b937d93a48::t_19f8c4aba513e7 2-5
+  s_1082b937d93a48::t_9f8b34f013a376 267-279,282-285,292
+  s_1082b937d93a48::t_7b212033ff3b83 209
+  s_1082b937d93a48::t_84d2580fc5766f 45-58
+  s_1082b937d93a48::t_2a4e2da9f39f77 152-158,161,168-169
+  s_1082b937d93a48::t_fce8cc32c75055 1
+src/domain/reminders.ts
+  s_1082b937d93a48::t_a446da692e333b 4,24-29,34
+  s_1082b937d93a48::t_9580bc2e6ce856 1,10-22
+  s_1082b937d93a48::t_a26a159fc40bd5 23
+src/domain/voice.ts
+  s_1082b937d93a48::t_a343c932be23ca 35-37
+  s_1082b937d93a48::t_3e0e821b25e189 144-145,168-173
+  s_1082b937d93a48::t_14205c866ba8f9 166,226
+app/preview/page.tsx
+  s_1082b937d93a48::t_f37e2a476fa4da 94-123
+supabase/schema.sql
+  s_1082b937d93a48::t_7986a45a6ec106 426-447
+  s_1082b937d93a48::t_4ff02b25d56886 479-489
+  s_1082b937d93a48::t_0dd3b261478378 464-468
+  s_1082b937d93a48::t_6dbecb6b9ad48c 71
+supabase/migrations/20260628120000_edit_delete_and_custom_reminder.sql
+  s_1082b937d93a48::t_0537d22eac5725 1-66
+src/domain/labels.ts
+  s_1082b937d93a48::t_2d466877b1873a 20-21
+src/domain/voice-errors.ts
+  s_1082b937d93a48::t_14f8cbf45dc138 1-141
+src/domain/types.ts
+  s_1082b937d93a48::t_cbcd7603c34f8b 146-149
+  s_1082b937d93a48::t_31e22594d423bc 1
+bitacora.md
+  s_1082b937d93a48::t_5e06b31ead9fc8 394-426
+src/components/voice-button.tsx
+  s_1082b937d93a48::t_031e5c950ead2f 7,25-29
+  s_1082b937d93a48::t_01398d2e4cf9a2 58,72-80
+  s_1082b937d93a48::t_5bc145019333e0 157-164
+  s_1082b937d93a48::t_27008dc62714f9 119-120
+  s_1082b937d93a48::t_6b014d8528837b 109
+  s_1082b937d93a48::t_da99d40493edfc 81-82
+src/domain/schemas.ts
+  s_1082b937d93a48::t_d9856005270756 38-42,50-51
+  s_1082b937d93a48::t_5b10626a0b58bd 52,105-108
+  s_1082b937d93a48::t_1a690ca2f9f37e 61-67,75-82
+  s_1082b937d93a48::t_92c2c4b2f45505 53
+src/components/today-client.tsx
+  s_1082b937d93a48::t_d429f7d7396ae0 44
+  s_1082b937d93a48::t_d0d1f9a246bed7 10,12-14,28-30,32-35,45,47-57,59-93,144-150,156-210,257-297,299-300,312,324,331,334,342,348-361,363,365-366,371,377-381,392,397-401,412,416-423,425-435,440,446,452-458,460-461,466,469,476-480,487,498,504-512,517-520,524-532,534-542,553,563-588,673,681,687-701,733,745,747,752,754,759,761,772-775,782-815
+  s_1082b937d93a48::t_8f0c1b7aa63afa 362
+next-env.d.ts
+  s_edea8bd1eaaf95::t_cf16b533c520ec 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "5eb9fa417c078e06b3b73f7c2d65c7cbbf8667d6",
+  "prompts": {},
+  "sessions": {
+    "s_1082b937d93a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cebf3933-8146-4dbd-b8a1-c3a821207c3b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    },
+    "s_374db07aad0108": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68e8ca37-2d46-4815-94c2-d03b5d5ad095",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    },
+    "s_edea8bd1eaaf95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890ea71b-4b1a-4405-9828-433d6e36df96",
+        "model": "unknown"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
