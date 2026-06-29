@@ -1,0 +1,19 @@
+PRD.md
+  s_437182f86d67b9::t_17b9a7ad45e4ab 2045-2175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "9851ac6565323f4a3bba40399504419cb07c2ca3",
+  "prompts": {},
+  "sessions": {
+    "s_437182f86d67b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c44921a-ab8d-442e-93c3-4bc1e0d7bf94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
