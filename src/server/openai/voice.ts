@@ -330,7 +330,11 @@ export async function extractVoiceEvent({
               "Interpretá los campos principales y completá (inferí) los que se deducen sin inventar datos que no estén. " +
               "Usá solo datos presentes o inferencias temporales simples: ahora, recién, hace X minutos, a las HH:mm. " +
               "Para horas ambiguas como 'a las tres', elegí la ocurrencia plausible más reciente dentro de las últimas 12 horas y agregá un warning. " +
-              "Si un evento (toma o pañal) no menciona ninguna hora, asumí que ocurrió AHORA (nowLocal); nunca dejes la hora vacía. " +
+              "HORA DEL EVENTO (prioridad ESTRICTA para startedAtLocal/eventTimeLocal): " +
+              "(a) Si el usuario menciona una hora EXPLÍCITA de la toma o pañal ('a las 15:40', 'tomó a las 3', 'cambié el pañal a las 9'), usá ESA hora. Una hora explícita SIEMPRE gana, aunque el audio también diga 'nueva toma', 'recién' o pida un recordatorio. " +
+              "(b) Si NO hay hora explícita pero dice 'ahora'/'recién'/'nueva toma' o solo pide un recordatorio, usá AHORA (nowLocal). " +
+              "(c) Si no se menciona ninguna hora, usá AHORA. Nunca dejes la hora vacía. " +
+              "OJO: la hora del RECORDATORIO ('en dos horas') es independiente de la hora de la toma; no la uses como inicio. " +
               "RECORDATORIOS (importante, no calcules horas vos): " +
               "1) Si el usuario pide una alarma RELATIVA ('recordame en 5 minutos', 'en 2 horas', 'en una hora y media'), convertí ese lapso a MINUTOS totales y ponelo en reminderRelativeMinutes (ej: 'cinco minutos'->5, 'dos horas'->120, 'una hora y media'->90). El lapso es desde AHORA (el momento del audio). NO calcules la hora absoluta, NO uses reminderOption ni reminderAtLocal. " +
               "2) Si pide una HORA EXACTA para la alarma ('recordame a las 14:30'), ponela en reminderAtLocal y dejá reminderRelativeMinutes en null. " +
@@ -340,6 +344,8 @@ export async function extractVoiceEvent({
               "6) Si el usuario usa la app como recordatorio de la PRÓXIMA toma sin decir cuándo fue la última (ej. 'recordame en 2 horas que tiene que tomar la teta', 'avisame en 3 horas para la teta'), interpretalo como register_feeding con startedAtLocal=nowLocal (la toma fue ahora) y el lapso en reminderRelativeMinutes. No uses set_reminder para tomas. " +
               "Ejemplo: 'le di la teta a las 11:40 y recordame en cinco minutos' => register_feeding, startedAtLocal=...T11:40, reminderRelativeMinutes=5, reminderAtLocal=null, reminderOption=null. " +
               "Ejemplo: 'recordame en 2 horas que tome la teta' => register_feeding, startedAtLocal=nowLocal, reminderRelativeMinutes=120, reminderAtLocal=null, reminderOption=null. " +
+              "Ejemplo (hora explícita gana sobre 'nueva toma'): 'Joaquín tomó a las 15:40, recordame en dos horas, nueva toma' => register_feeding, startedAtLocal=<hoy>T15:40, reminderRelativeMinutes=120, reminderAtLocal=null, reminderOption=null. " +
+              "Si la transcripción tiene VARIAS señales de tiempo o queda ambigua sobre la hora de inicio, agregá un warning ('Revisá la hora de inicio') y bajá confidence a 0.6 o menos. " +
               "No inventes duraciones, tipo de pañal, profesional ni alarmas si no aparecen. " +
               "Los campos *Local deben usar formato YYYY-MM-DDTHH:mm en America/Argentina/Buenos_Aires."
           },
