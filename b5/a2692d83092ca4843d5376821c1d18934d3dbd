@@ -1,0 +1,20 @@
+src/server/openai/voice.ts
+  s_437182f86d67b9::t_caeb5fabcfdb3b 347-348
+  s_437182f86d67b9::t_10bed043cc2acf 333-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "b5a2692d83092ca4843d5376821c1d18934d3dbd",
+  "prompts": {},
+  "sessions": {
+    "s_437182f86d67b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c44921a-ab8d-442e-93c3-4bc1e0d7bf94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
