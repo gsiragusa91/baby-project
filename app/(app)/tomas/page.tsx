@@ -1,4 +1,5 @@
 import { FeedingScreen } from "@/src/components/feeding-screen";
+import { getFeedingHistory } from "@/src/data/history";
 import { resolveReadyContext } from "@/src/data/page-context";
 import { getTodaySummary } from "@/src/data/today";
 import { isSupabaseConfigured } from "@/src/lib/supabase/config";
@@ -9,7 +10,10 @@ export default async function TomasPage() {
   }
 
   const context = await resolveReadyContext();
-  const summary = await getTodaySummary(context);
+  const [summary, history] = await Promise.all([
+    getTodaySummary(context),
+    getFeedingHistory(context)
+  ]);
 
-  return <FeedingScreen summary={summary} />;
+  return <FeedingScreen summary={summary} history={history} />;
 }

@@ -13,7 +13,7 @@ import { signedUrlsFor } from "@/src/lib/supabase/storage";
 
 import type { ReadyFamilyContext } from "./context";
 
-type DiaperRow = {
+export type DiaperRow = {
   id: string;
   baby_id: string;
   family_id: string;
@@ -28,7 +28,7 @@ type DiaperRow = {
   transcript: string | null;
 };
 
-type FeedingRow = {
+export type FeedingRow = {
   id: string;
   baby_id: string;
   family_id: string;
@@ -47,7 +47,7 @@ type FeedingRow = {
   transcript: string | null;
 };
 
-type QuestionRow = {
+export type QuestionRow = {
   id: string;
   baby_id: string;
   family_id: string;
@@ -77,7 +77,7 @@ type ReminderRow = {
   channel: Reminder["channel"];
 };
 
-function mapDiaper(row: DiaperRow): DiaperEvent {
+export function mapDiaper(row: DiaperRow): DiaperEvent {
   return {
     id: row.id,
     babyId: row.baby_id,
@@ -94,7 +94,7 @@ function mapDiaper(row: DiaperRow): DiaperEvent {
   };
 }
 
-function mapFeeding(row: FeedingRow): FeedingEvent {
+export function mapFeeding(row: FeedingRow): FeedingEvent {
   return {
     id: row.id,
     babyId: row.baby_id,
@@ -115,7 +115,7 @@ function mapFeeding(row: FeedingRow): FeedingEvent {
   };
 }
 
-function mapQuestion(row: QuestionRow): Question {
+export function mapQuestion(row: QuestionRow): Question {
   return {
     id: row.id,
     babyId: row.baby_id,

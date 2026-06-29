@@ -34,6 +34,15 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
   );
 }
 
+/** "mar 24 jun" a partir de un dayKey YYYY-MM-DD (en hora de Argentina). */
+export function formatDayLabel(dayKey: string): string {
+  return new Date(`${dayKey}T12:00:00-03:00`).toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short"
+  });
+}
+
 /** Estado vacío reutilizable para las listas. */
 export function EmptyState({ children }: { children: React.ReactNode }) {
   return (

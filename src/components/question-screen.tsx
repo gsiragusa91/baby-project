@@ -4,15 +4,42 @@ import { Check } from "lucide-react";
 
 import { deleteQuestionAction, markQuestionAnsweredAction } from "@/app/actions";
 import { PROFESSIONAL_LABELS } from "@/src/domain/labels";
-import type { TodaySummary } from "@/src/domain/types";
+import type { Question, TodaySummary } from "@/src/domain/types";
 
+import { DayAccordion } from "./day-accordion";
 import { EventSheet } from "./event-sheet";
 import { QuestionForm, type QuestionInitial } from "./forms/question-form";
 import { questionToInitial } from "./forms/initials";
 import { useSectionSheet } from "./forms/use-section-sheet";
 import { AddButton, EmptyState, SectionHeading } from "./section-ui";
 
-export function QuestionScreen({ summary }: { summary: TodaySummary }) {
+/** Card de duda: texto + profesional + foto opcional. Tappable para editar. */
+function QuestionBody({ question }: { question: Question }) {
+  return (
+    <>
+      <p className="text-sm font-semibold leading-5">{question.text}</p>
+      <p className="mt-1 text-xs font-semibold text-[var(--ink-soft)]">
+        {PROFESSIONAL_LABELS[question.professional]}
+      </p>
+      {question.photoSignedUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={question.photoSignedUrl}
+          alt="Foto de la duda"
+          className="mt-2 h-20 w-20 rounded-[var(--radius-md)] object-cover"
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function QuestionScreen({
+  summary,
+  answered
+}: {
+  summary: TodaySummary;
+  answered: Question[];
+}) {
   const { sheet, openAdd, openEdit, close, remove } = useSectionSheet<QuestionInitial>(
     "dudas",
     deleteQuestionAction
@@ -39,18 +66,7 @@ export function QuestionScreen({ summary }: { summary: TodaySummary }) {
                 onClick={() => openEdit(question.id, questionToInitial(question))}
                 className="min-w-0 flex-1 text-left"
               >
-                <p className="text-sm font-semibold leading-5">{question.text}</p>
-                <p className="mt-1 text-xs font-semibold text-[var(--ink-soft)]">
-                  {PROFESSIONAL_LABELS[question.professional]}
-                </p>
-                {question.photoSignedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={question.photoSignedUrl}
-                    alt="Foto de la duda"
-                    className="mt-2 h-20 w-20 rounded-[var(--radius-md)] object-cover"
-                  />
-                ) : null}
+                <QuestionBody question={question} />
               </button>
               {/* Marcar respondida: form aparte para no anidar botones. */}
               <form action={markQuestionAnsweredAction}>
@@ -67,6 +83,27 @@ export function QuestionScreen({ summary }: { summary: TodaySummary }) {
           ))
         )}
       </div>
+
+      {/* Histórico de la sección: las dudas YA respondidas (colapsable). */}
+      {answered.length > 0 ? (
+        <div className="mt-2">
+          <DayAccordion
+            label="Respondidas"
+            summary={`${answered.length} ${answered.length === 1 ? "duda" : "dudas"}`}
+          >
+            {answered.map((question) => (
+              <button
+                key={question.id}
+                type="button"
+                onClick={() => openEdit(question.id, questionToInitial(question))}
+                className="block w-full rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--surface)] p-3 text-left"
+              >
+                <QuestionBody question={question} />
+              </button>
+            ))}
+          </DayAccordion>
+        </div>
+      ) : null}
 
       {sheet ? (
         <EventSheet
