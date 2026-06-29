@@ -2042,3 +2042,134 @@ Desde el estado actual:
 8. Ajustar UX de confirmación.
 
 La prioridad debe ser construir una versión pequeña, estable y usable en contexto real, antes de expandir el alcance.
+
+---
+
+# 21. Arquitectura técnica — estado real (V1)
+
+> Esta sección documenta **lo que está efectivamente construido y deployado** a junio 2026. La sección 8 era el diseño inicial sugerido; la implementación divergió en varios puntos (navegación, voz, storage). Ante diferencias, **manda esta sección**.
+
+## 21.1 Stack real
+
+| Capa | Tecnología | Notas |
+|------|-----------|-------|
+| Framework | **Next.js (App Router)** + React + TypeScript | Server Components + Server Actions. Turbopack en dev. |
+| Estilos | **Tailwind v4** + tokens CSS propios | Tema dark-only "candy" (ver §16.5). |
+| Backend/DB | **Supabase** | Postgres + Auth + Storage + `pg_cron`/`pg_net` + Vault. |
+| Autorización | **Row Level Security (RLS)** | Todas las tablas filtran por `public.is_family_member(family_id)`. |
+| IA voz | **OpenAI** | Transcripción `gpt-4o-mini-transcribe` + extracción `gpt-4o-mini` (JSON Schema estricto). |
+| Notificaciones | **Web Push (VAPID, sin deps)** + **Alexa** (Voice Monkey) | Push implementado con `node:crypto` puro (la red de MeLi bloquea instalar `web-push`). |
+| Hosting | **Vercel** | `joaco-project.vercel.app`. **Deploy on push** a `main` (cada push va a producción). |
+| Repo | `github.com/gsiragusa91/baby-project` | Personal (separado de la identidad MeLi). |
+
+## 21.2 Flujo general
+
+```mermaid
+flowchart TB
+  subgraph Cliente["PWA (Next.js, mobile-first)"]
+    Tabs["Tabs: Inicio · Pañal · Toma · Duda · (Tu bebé en header)"]
+    Voz["Botón de voz flotante (máx 15s)"]
+    Forms["Forms de alta/edición + fotos"]
+  end
+  subgraph Server["Next.js (Server Actions / Route Handlers)"]
+    Actions["Server Actions: create/update/delete + confirmVoiceEvent"]
+    VoiceAPI["POST /api/voice/parse"]
+    Dispatch["POST /api/reminders/dispatch (cron)"]
+  end
+  subgraph Supa["Supabase"]
+    DB["Postgres + RLS"]
+    Auth["Auth"]
+    Storage["Storage (bucket privado baby-media)"]
+    Cron["pg_cron (cada minuto)"]
+  end
+  OpenAI["OpenAI (Whisper + GPT-4o-mini)"]
+  Push["Web Push / Alexa"]
+
+  Tabs --> Actions --> DB
+  Forms --> Storage
+  Voz --> VoiceAPI --> OpenAI
+  VoiceAPI --> Actions
+  Auth --- DB
+  Cron --> Dispatch --> DB
+  Dispatch --> Push
+```
+
+## 21.3 Navegación (route group + tabs)
+
+- **Route group `app/(app)/`** con un layout compartido (`app/(app)/layout.tsx`) que resuelve el contexto familiar y monta el *chrome* global (`src/components/app-shell.tsx`): header + barra inferior **flotante** + botón de voz al centro.
+- Rutas reales: `/` (Inicio), `/panales`, `/tomas`, `/dudas`, `/bebe`. Cada `page.tsx` es Server Component que resuelve datos y renderiza su *screen* cliente.
+- **Cap de 5 íconos** en la barra: Inicio, Pañal, Toma, Duda + mic. **"Tu bebé" se entra desde el nombre del bebé en el header**.
+- **Handoff entre pantallas** (`src/lib/pending-form.ts`): cuando la voz (global) o el timeline de Inicio quieren abrir un form en otra sección, dejan la intención en `sessionStorage` (+ evento) y la pantalla destino la levanta al montar. Sirve para "Editar" desde la tarjeta de voz y para tap-para-editar desde Inicio.
+
+## 21.4 Modelo de datos real (tablas Postgres)
+
+`families`, `family_members`, `family_invites`, `babies`, `diaper_events`, `feeding_events`, `questions` (con `photo_url`), `reminders`, `voice_parse_logs`, `push_subscriptions`, `baby_photos` (álbum). Todas con RLS por familia. Storage: bucket privado **`baby-media`** con path `families/{familyId}/{kind}/{uuid}.{ext}` (`kind` = diaper|question|album) y políticas que leen el `familyId` del path.
+
+## 21.5 Flujo del micrófono con IA (detallado)
+
+**Input:** audio grabado en el browser (`MediaRecorder`, **máx 15s** para acotar costo de tokens), enviado como `multipart/form-data` a `POST /api/voice/parse`.
+
+**Pipeline** (`app/api/voice/parse/route.ts` → `src/server/openai/voice.ts`):
+1. **Transcripción** — Whisper `gpt-4o-mini-transcribe` (idioma `es`) → texto.
+2. **Extracción** — `gpt-4o-mini`, `temperature: 0`, con **JSON Schema estricto** (`VOICE_EXTRACTION_JSON_SCHEMA` en `src/domain/voice.ts`). Mensaje `user` = `{ babyName, timezone, nowLocal, transcript }`.
+3. **Normalización** (`normalizeProposedEvent`) — valida tipos y **resuelve la alarma EN CÓDIGO** (no se confía la aritmética de tiempo al LLM).
+
+**Qué interpreta el LLM (system prompt):**
+- `intent`: `register_diaper | register_feeding | create_question | set_reminder | unknown`.
+- Horas en formato local (`YYYY-MM-DDTHH:mm`, zona AR). Inferencias simples: *ahora, recién, hace X minutos, a las HH:mm*.
+- **Si no se menciona hora → asume "ahora"** (tolerancia: evita errores por audio no estricto).
+- **Recordatorios**: el LLM NO calcula horas. Devuelve `reminderRelativeMinutes` (lapso) o `reminderAtLocal` (hora exacta) o `reminderOption` (preset literal). El **lapso relativo se ancla al momento del audio** (`nowLocal`), no al inicio de la toma.
+- **Inferencia de uso-como-recordatorio**: "recordame en 2hs que tome la teta" → `register_feeding` con toma = ahora + alarma relativa.
+
+**Output** (`VoiceParseResult`):
+```json
+{
+  "transcript": "le di la teta a las 19 y recordame en 2 horas",
+  "intent": "register_feeding",
+  "confidence": 0.93,
+  "warnings": [],
+  "needsConfirmation": true,
+  "proposedEvent": {
+    "intent": "register_feeding",
+    "startedAtLocal": "2026-06-29T19:00",
+    "reminderOption": "custom",
+    "reminderAtLocal": "2026-06-29T21:30"
+  }
+}
+```
+La tarjeta de confirmación muestra esto; el usuario **Confirma / Edita / Descarta**. Solo al confirmar se persiste (`confirmVoiceEventAction` → `saveProposedVoiceEvent`).
+
+**Catálogo de errores** (`src/domain/voice-errors.ts`): cada falla tiene un `code` estable + mensaje en español + hint. Ejemplos: `mic_permission`, `no_audio`, `empty_audio`, `audio_too_large`, `transcription_empty`, `extraction_invalid`, `openai_auth`, `rate_limited`, `openai_unavailable`, `network`, `unknown`. `/api/voice/parse` devuelve `{ errorCode, error }`; el cliente lo traduce con el catálogo.
+
+**Gotcha importante (producción):** Next.js **censura los mensajes de error que escapan de un Server Action en prod** (los reemplaza por un texto genérico de "Server Components render"). Por eso `confirmVoiceEventAction` **devuelve el error como dato** (`{ ok:false, error }`) y el cliente lo re-lanza, para mostrar el motivo real en vez del genérico.
+
+## 21.6 Histórico por sección
+
+- `src/data/history.ts`: trae los últimos **30 días** (excluyendo hoy) por sección y los agrupa por día (zona AR).
+- **Pañal / Toma**: el día actual arriba; debajo, acordeones colapsables por día con la sumatoria, que se abren al detalle (`src/components/day-accordion.tsx`).
+- **Dudas**: las pendientes siempre visibles (sin importar el día) + colapsable **"Respondidas"** como histórico de la sección.
+
+## 21.7 Fotos y Storage
+
+- Foto opcional en **pañal**, **duda** y sección **Tu bebé** (álbum por semana, calculada desde `birth_date`).
+- Bucket **privado** `baby-media` → se sirve siempre por **signed URLs** generadas server-side (datos sensibles, §10).
+- **Subida vía Server Action** (no cliente browser): la imagen se **redimensiona en el browser** (`src/lib/image.ts`, ~1600px/JPEG) antes de viajar; se persiste el *path* y se firma al leer.
+
+## 21.8 Alarmas que suenan
+
+`pg_cron` (cada minuto) → `POST /api/reminders/dispatch` (cliente service-role, header secreto de Vault) → busca reminders `scheduled` vencidos → despacha a **Web Push (PWA)** + **Alexa** (anuncio por voz + rutina) → marca `sent`. Detalle operativo en `ALARMAS_SETUP.md`.
+
+## 21.9 Deploy y entornos
+
+- `git push` a `main` → Vercel deploya a prod. **Regla:** todo push debe quedar verde (`tsc` + `lint` + `build`).
+- **Las migraciones de DB deben aplicarse a prod (`supabase db push`) ANTES** de pushear código que lea columnas/tablas nuevas (si no, prod se rompe). Las queries usan `select("*")` (tolera columnas faltantes) pero una **tabla** faltante sí explota.
+- Secretos: `.env.local` (local) y variables en Vercel; secretos del cron en Supabase Vault. Nunca en git.
+
+## 21.10 Oportunidades / gaps conocidos
+
+- **`set_reminder` no se persiste**: las frases de recordatorio de toma se rerutean a `register_feeding`; un recordatorio "puro" (ej. de sueño) todavía no tiene destino. Oportunidad: soportarlo como evento propio.
+- **Sueño** (§6.4.1): diseñado, no implementado.
+- **Fotos en el histórico**: hoy no se muestran thumbnails en los días anteriores (para no pegarle a Storage de más); la foto sí se ve al abrir el registro.
+- **Resumen para consulta médica** (§12.2): pendiente.
+- **Calidad de IA sin medir**: `voice_parse_logs` guarda intentos (intent, confidence, accepted, error) pero todavía no se explota para medir accuracy/tasa de descarte (§11.2).
+- **Verificación**: el flujo de voz y las pantallas detrás de login se prueban manualmente en prod; no hay tests automatizados.
