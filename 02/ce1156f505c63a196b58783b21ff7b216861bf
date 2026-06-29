@@ -1,0 +1,45 @@
+src/data/history.ts
+  s_437182f86d67b9::t_9fb81e2062163a 1-102
+src/components/diaper-screen.tsx
+  s_437182f86d67b9::t_ac3234288a4164 6,9,11,16,18-61,78,80-82,87-108
+  s_437182f86d67b9::t_538c0f6125c111 109
+src/components/question-screen.tsx
+  s_437182f86d67b9::t_78176fa90bcfed 7,9,16-42,69,87-106
+  s_437182f86d67b9::t_a1b4ba2ab057ab 107
+src/components/feeding-screen.tsx
+  s_437182f86d67b9::t_88cc7483814709 6,10,15,26-52,84,86-88,93-114
+  s_437182f86d67b9::t_6f37b65f0fee16 115
+app/(app)/panales/page.tsx
+  s_437182f86d67b9::t_eb1a67737bba69 2,13-16,18
+app/(app)/tomas/page.tsx
+  s_437182f86d67b9::t_3b8d445c7f6e08 2,13-16,18
+app/(app)/dudas/page.tsx
+  s_437182f86d67b9::t_9b4bfa9306bdc1 2,13-16,18
+src/components/section-ui.tsx
+  s_437182f86d67b9::t_40f0c0b99a6b79 37-45
+src/data/today.ts
+  s_437182f86d67b9::t_084f7c69d4d373 97
+  s_437182f86d67b9::t_e79d4ca2e4ec58 31
+  s_437182f86d67b9::t_515f06d6e77a51 118
+  s_437182f86d67b9::t_b198f7b3fd54ec 50
+  s_437182f86d67b9::t_2dc1ad6324e4b8 16
+  s_437182f86d67b9::t_b64ea1d4b591a6 80
+src/components/day-accordion.tsx
+  s_437182f86d67b9::t_d23b2c88c74550 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "02ce1156f505c63a196b58783b21ff7b216861bf",
+  "prompts": {},
+  "sessions": {
+    "s_437182f86d67b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c44921a-ab8d-442e-93c3-4bc1e0d7bf94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guido Martin Siragusa <209394133+gsiragusa91@users.noreply.github.com>"
+    }
+  }
+}
