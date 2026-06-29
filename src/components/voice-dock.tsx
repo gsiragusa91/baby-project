@@ -83,7 +83,13 @@ export function VoiceDock({ parser = "api" }: { parser?: "api" | "mock" }) {
     parser === "mock"
       ? async () => {}
       : async (result: VoiceParseResult) => {
-          await confirmVoiceEventAction(result);
+          const res = await confirmVoiceEventAction(result);
+          // El error viene como dato (Next censura los throw de Server Actions en
+          // prod). Lo relanzamos del lado del cliente para que el botón de voz
+          // muestre el mensaje real en vez del texto genérico.
+          if (!res.ok) {
+            throw new Error(res.error);
+          }
           router.refresh();
         };
 

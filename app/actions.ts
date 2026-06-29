@@ -522,17 +522,20 @@ export async function updateBabyAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
-export async function confirmVoiceEventAction(result: VoiceParseResult) {
+export async function confirmVoiceEventAction(
+  result: VoiceParseResult
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const context = await requireReadyContext();
 
   if (result.proposedEvent.intent === "unknown" || result.intent === "unknown") {
-    throw new Error("No se puede guardar un audio que no fue interpretado.");
+    return { ok: false, error: "No se puede guardar un audio que no fue interpretado." };
   }
 
   try {
     await saveProposedVoiceEvent(context, result);
     await recordVoiceParseLog(context, result, { accepted: true });
     revalidatePath("/", "layout");
+    return { ok: true };
   } catch (error) {
     const message =
       error instanceof Error && error.message.trim().length > 0
@@ -540,7 +543,10 @@ export async function confirmVoiceEventAction(result: VoiceParseResult) {
         : "Error desconocido al guardar el evento de voz.";
     // El log es best-effort: si falla, NO debe tapar el error real del guardado.
     await recordVoiceParseLog(context, result, { accepted: false, error: message });
-    throw error;
+    // Devolvemos el error como DATO, no con throw: en producción Next censura los
+    // mensajes que escapan de un Server Action (el usuario veía un texto genérico
+    // de "Server Components render"). Así el cliente muestra el motivo real.
+    return { ok: false, error: message };
   }
 }
 

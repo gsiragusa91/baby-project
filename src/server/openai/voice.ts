@@ -92,20 +92,26 @@ function enumValue<T extends string>(
  * la hora absoluta en CÓDIGO (no confiamos la aritmética de tiempo al modelo).
  * Prioridad: relativo ("en 5 min") > hora absoluta > preset literal > "sin
  * alarma" explícito > default (cuando el usuario no mencionó nada).
+ *
+ * Los recordatorios relativos se anclan al MOMENTO DEL AUDIO (`nowLocal`), no a
+ * la hora de inicio de la toma: "recordame en 2 horas" significa 2 h desde que
+ * el usuario habla. (Ej.: audio 19:30, "en 2 horas" -> 21:30, aunque la toma
+ * haya empezado 19:00.)
  */
 function resolveVoiceFeedingReminder(
-  startedAtLocal: string | undefined,
+  nowLocal: string,
   raw: {
     relativeMinutes?: number;
     atLocal?: string;
     option?: ReminderOption;
   }
 ): { option: ReminderOption; atLocal?: string } {
-  // 1. "en X minutos/horas": el modelo dio los minutos crudos, nosotros la hora.
-  if (raw.relativeMinutes != null && raw.relativeMinutes > 0 && startedAtLocal) {
+  // 1. "en X minutos/horas": el modelo dio los minutos crudos; la hora la
+  //    calculamos desde AHORA (el momento del audio).
+  if (raw.relativeMinutes != null && raw.relativeMinutes > 0) {
     return {
       option: "custom",
-      atLocal: addMinutesToLocal(startedAtLocal, raw.relativeMinutes)
+      atLocal: addMinutesToLocal(nowLocal, raw.relativeMinutes)
     };
   }
 
@@ -128,7 +134,7 @@ function resolveVoiceFeedingReminder(
   return { option: DEFAULT_FEEDING_REMINDER };
 }
 
-function normalizeProposedEvent(value: unknown): ProposedVoiceEvent {
+function normalizeProposedEvent(value: unknown, nowLocal: string): ProposedVoiceEvent {
   const event = asRecord(value);
 
   if (!event) {
@@ -141,7 +147,9 @@ function normalizeProposedEvent(value: unknown): ProposedVoiceEvent {
   if (event.intent === "register_diaper") {
     return {
       intent: "register_diaper",
-      eventTimeLocal: optionalString(event.eventTimeLocal),
+      // Si no se dijo hora, asumimos AHORA (registro rápido): así no falla el
+      // guardado por "faltan datos" cuando el audio no es estricto.
+      eventTimeLocal: optionalString(event.eventTimeLocal) ?? nowLocal,
       diaperType: enumValue(event.diaperType, ["pee", "poop", "pee_poop", "dry"]),
       comment: optionalString(event.comment),
       abnormalFlag: optionalBoolean(event.abnormalFlag)
@@ -149,8 +157,9 @@ function normalizeProposedEvent(value: unknown): ProposedVoiceEvent {
   }
 
   if (event.intent === "register_feeding") {
-    const startedAtLocal = optionalString(event.startedAtLocal);
-    const reminder = resolveVoiceFeedingReminder(startedAtLocal, {
+    // Misma tolerancia: sin hora explícita, la toma es AHORA.
+    const startedAtLocal = optionalString(event.startedAtLocal) ?? nowLocal;
+    const reminder = resolveVoiceFeedingReminder(nowLocal, {
       relativeMinutes: optionalInteger(event.reminderRelativeMinutes),
       atLocal: optionalString(event.reminderAtLocal),
       option: enumValue(event.reminderOption, ["2h", "2h30", "3h", "none", "custom"])
@@ -321,13 +330,16 @@ export async function extractVoiceEvent({
               "Interpretá los campos principales y completá (inferí) los que se deducen sin inventar datos que no estén. " +
               "Usá solo datos presentes o inferencias temporales simples: ahora, recién, hace X minutos, a las HH:mm. " +
               "Para horas ambiguas como 'a las tres', elegí la ocurrencia plausible más reciente dentro de las últimas 12 horas y agregá un warning. " +
+              "Si un evento (toma o pañal) no menciona ninguna hora, asumí que ocurrió AHORA (nowLocal); nunca dejes la hora vacía. " +
               "RECORDATORIOS (importante, no calcules horas vos): " +
-              "1) Si el usuario pide una alarma RELATIVA ('recordame en 5 minutos', 'en 2 horas', 'en una hora y media'), convertí ese lapso a MINUTOS totales y ponelo en reminderRelativeMinutes (ej: 'cinco minutos'->5, 'dos horas'->120, 'una hora y media'->90). NO calcules la hora absoluta, NO uses reminderOption ni reminderAtLocal. " +
+              "1) Si el usuario pide una alarma RELATIVA ('recordame en 5 minutos', 'en 2 horas', 'en una hora y media'), convertí ese lapso a MINUTOS totales y ponelo en reminderRelativeMinutes (ej: 'cinco minutos'->5, 'dos horas'->120, 'una hora y media'->90). El lapso es desde AHORA (el momento del audio). NO calcules la hora absoluta, NO uses reminderOption ni reminderAtLocal. " +
               "2) Si pide una HORA EXACTA para la alarma ('recordame a las 14:30'), ponela en reminderAtLocal y dejá reminderRelativeMinutes en null. " +
               "3) Solo usá reminderOption '2h'/'2h30'/'3h' si el usuario dice literalmente ese preset. " +
               "4) Si dice explícitamente que NO quiere alarma ('sin alarma'), reminderOption='none'. " +
               "5) Si NO menciona ninguna alarma, dejá reminderRelativeMinutes, reminderAtLocal y reminderOption todos en null (el servidor aplicará el default). " +
+              "6) Si el usuario usa la app como recordatorio de la PRÓXIMA toma sin decir cuándo fue la última (ej. 'recordame en 2 horas que tiene que tomar la teta', 'avisame en 3 horas para la teta'), interpretalo como register_feeding con startedAtLocal=nowLocal (la toma fue ahora) y el lapso en reminderRelativeMinutes. No uses set_reminder para tomas. " +
               "Ejemplo: 'le di la teta a las 11:40 y recordame en cinco minutos' => register_feeding, startedAtLocal=...T11:40, reminderRelativeMinutes=5, reminderAtLocal=null, reminderOption=null. " +
+              "Ejemplo: 'recordame en 2 horas que tome la teta' => register_feeding, startedAtLocal=nowLocal, reminderRelativeMinutes=120, reminderAtLocal=null, reminderOption=null. " +
               "No inventes duraciones, tipo de pañal, profesional ni alarmas si no aparecen. " +
               "Los campos *Local deben usar formato YYYY-MM-DDTHH:mm en America/Argentina/Buenos_Aires."
           },
@@ -388,7 +400,7 @@ export async function extractVoiceEvent({
     };
   }
 
-  const proposedEvent = normalizeProposedEvent(parsed.proposedEvent);
+  const proposedEvent = normalizeProposedEvent(parsed.proposedEvent, nowLocal);
 
   return {
     transcript,
